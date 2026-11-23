@@ -1,28 +1,21 @@
-# A message from the developer
-Hi everyone, thanks for these past few months—it’s been great. However, for a variety of strictly personal reasons, I can no longer continue developing the app as my life is changing. I’ve contacted Apple several times to figure out what’s wrong, since there are no error messages, but they’ve never responded (I’ll try to find a solution). That said, this repo will remain active in archive mode.
+# 🏠 Rackwarden
 
-
-
-# 🏠 Homelab Dashboard
+**Native iOS and Android app for monitoring and managing your self-hosted services from one place.**
 
 [![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg?logo=swift)](https://swift.org)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0-purple.svg?logo=kotlin)](https://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.1-purple.svg?logo=kotlin)](https://kotlinlang.org)
 [![Platform](https://img.shields.io/badge/Platform-iOS%2026%2B-blue.svg)](https://developer.apple.com/ios/)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://developer.android.com)
 [![Made with SwiftUI](https://img.shields.io/badge/Made%20with-SwiftUI-blue.svg?logo=swift)](https://developer.apple.com/xcode/swiftui/)
 [![Made with Jetpack Compose](https://img.shields.io/badge/Made%20with-Jetpack%20Compose-green.svg?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 
-Homelab Dashboard is a fully native mobile app for monitoring and managing a self-hosted homelab from one place. The project ships two dedicated apps, one for iOS and one for Android, designed around the same product idea while respecting each platform's native UI patterns.
+Rackwarden ships two dedicated apps, one for iOS and one for Android, designed around the same product idea while respecting each platform's native UI patterns.
 
-## 💝 Support the App Store Launch
+> Originally created by [JohnnWi](https://github.com/JohnnWi/homelab-project) as Homelab Dashboard, whose repository is now archived. Rackwarden is an independent continuation and is not affiliated with or endorsed by the original author.
 
-A GoFundMe campaign has been launched to raise €100 only to cover the Apple Developer Program account and the App Store publication costs for the iOS app. Every contribution helps make an official App Store release possible.
+> **Status:** Rackwarden has not published a release yet. The renaming is in progress, so the apps, screenshots, and project folders still use the Homelab name. To try it today, [build from source](#-getting-started).
 
-**[→ Donate on GoFundMe](https://gofund.me/25ff55d40)**
-
----
-
-> **Disclaimer:** This is a vibe-coding project built for fun and personal use. It is provided as-is with no guarantees. The author assumes no responsibility for any issues, data loss, or damages resulting from the use of this software.
+> **Disclaimer:** This software is provided as-is, without warranties. See the [license](LICENSE) for details.
 
 <table align="center">
   <tr>
@@ -288,32 +281,24 @@ The Android version is built with **Kotlin** and **Jetpack Compose** for **Andro
 
 ---
 
-## 📲 Install via AltStore / SideStore
+## 📲 Install
 
-You can install the iOS app directly on your iPhone without Xcode using **AltStore** or **SideStore**.
+There are no prebuilt Rackwarden downloads yet. Until the first release, build the app from source using the steps below.
 
-1. Copy the source URL:
-   ```
-   https://raw.githubusercontent.com/JohnnWi/homelab-project/main/apps.json
-   ```
-2. Open **AltStore** or **SideStore** on your device.
-3. Go to **Sources** → **Add Source** and paste the URL above.
-4. Find **Homelab** in the source and tap **Install**.
+Releases will be published on the [Releases page](https://github.com/milangtoth/Rackwarden/releases).
 
-The app can then be refreshed and updated from the same source.
-
-> **Note:** SideStore can re-sign the app automatically without needing a Mac every 7 days.
+> **Note:** The `apps.json` source and in-app update checks in this repository still point to the original project's final release, so don't use them to install or update Rackwarden.
 
 ---
 
-## 🛠️ Getting Started
+## 🔧 Getting Started
 
 ### Repository Layout
 
 - `HomelabSwift/`: native iOS app built with SwiftUI.
 - `HomelabAndroid/`: native Android app built with Kotlin and Jetpack Compose.
-- `docs/`: public privacy and support pages served through GitHub Pages.
-- `apps.json` and `app-version.json`: update metadata used by the AltStore / SideStore source and in-app update banner.
+- `docs/`: privacy and support pages inherited from the original project, pending an update.
+- `apps.json` and `app-version.json`: update metadata for the AltStore Classic / SideStore source and in-app update banner, pending an update.
 
 ### Build for iOS
 
@@ -329,33 +314,22 @@ The app can then be refreshed and updated from the same source.
 
 ---
 
-## 🧭 Support & Privacy
+## 🧭 Support & Contributing
 
-For help, bug reports, compatibility issues, or App Store support requests, use the public support page or GitHub Issues:
+Bug reports, compatibility issues, and feature requests are welcome in [GitHub Issues](https://github.com/milangtoth/Rackwarden/issues). Pull requests are welcome too; see [AGENTS.md](AGENTS.md) for build checks and repository conventions.
 
-- **Support:** [johnnwi.github.io/homelab-project/support.html](https://johnnwi.github.io/homelab-project/support.html)
-- **Privacy Policy:** [johnnwi.github.io/homelab-project/privacy.html](https://johnnwi.github.io/homelab-project/privacy.html)
-- **Issues:** [github.com/JohnnWi/homelab-project/issues](https://github.com/JohnnWi/homelab-project/issues)
+Please don't report Rackwarden issues to the original project.
 
 ---
 
-## 💖 Funding
+## 🙏 Credits
 
-This project is a solo effort maintained by a university student.
-
-The GoFundMe campaign is dedicated only to covering the Apple Developer Program account and App Store publication costs:
-
-**[→ Donate on GoFundMe](https://gofund.me/25ff55d40)**
-
-Crypto donations are optional, unrestricted donations to support the project and its maintenance:
-
-**EVM Wallet (Ethereum, BSC, Polygon, etc.)**  
-`0x649641868e6876c2c1f04584a95679e01c1aaf0d`
+Rackwarden is built on [Homelab Dashboard](https://github.com/JohnnWi/homelab-project) by [JohnnWi](https://github.com/JohnnWi), with contributions from [russssl](https://github.com/russssl), [FlintyLemming](https://github.com/FlintyLemming), and [vladtaylor](https://github.com/vladtaylor). The full commit history is preserved in this repository.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **Apache License 2.0**.
+This project is licensed under the **Apache License 2.0**, the same license as the original project.
 
 See [LICENSE](LICENSE) for the full text.
