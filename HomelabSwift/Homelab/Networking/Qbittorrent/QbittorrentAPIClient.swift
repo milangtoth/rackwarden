@@ -257,7 +257,7 @@ actor QbittorrentAPIClient {
         ]
         req.httpBody = components.query?.data(using: .utf8)
 
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
 
         AppLogger.shared.network("--> POST \(fullUrl.absoluteString)", source: "qBittorrent")
         let (data, response) = try await session.data(for: req)

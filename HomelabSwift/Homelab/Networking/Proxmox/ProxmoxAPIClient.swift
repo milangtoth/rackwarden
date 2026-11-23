@@ -99,8 +99,8 @@ actor ProxmoxAPIClient {
         return bodyString.data(using: .utf8)
     }
 
-    private func authenticationSession() -> URLSession {
-        BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+    private func authenticationSession() -> AccessSession {
+        BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
     }
 
     private func markAuthenticated(ticket: String, csrf: String) {

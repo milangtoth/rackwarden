@@ -286,8 +286,8 @@ actor TrueNASAPIClient {
         components.path = endpoint
         components.query = nil
         guard let url = components.url else { throw APIError.invalidURL }
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
-        return session.webSocketTask(with: url)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+        return try session.webSocketTask(with: url)
     }
 
     private func sendJSON(task: URLSessionWebSocketTask, object: Any) async throws {

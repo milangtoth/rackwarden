@@ -575,6 +575,7 @@ final class ServicesStore {
         reachabilityByInstanceId.removeValue(forKey: id)
         pingingByInstanceId.removeValue(forKey: id)
         clientManager.removeClient(id: id, type: removed.type)
+        AccessProfileStore.shared.set(nil, for: id)
         repairPreferredInstance(for: removed.type)
         persistState()
     }

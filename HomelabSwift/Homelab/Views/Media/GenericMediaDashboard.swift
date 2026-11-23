@@ -107,6 +107,7 @@ struct GenericMediaDashboard: View {
                     status: result.status.map(localizedSearchStatus),
                     posterURL: result.posterURL,
                     artworkHeaders: serviceArtworkHeaders(for: result.posterURL, instance: instance),
+                    artworkInstance: instance,
                     detailsURL: result.detailsURL,
                     details: result.details,
                     canRequest: result.requestMediaType != nil && result.requestMediaId != nil
@@ -888,6 +889,7 @@ struct GenericMediaDashboard: View {
                                     status: result.status.map(localizedSearchStatus),
                                     posterURL: result.posterURL,
                                     artworkHeaders: serviceArtworkHeaders(for: result.posterURL, instance: instance),
+                                    artworkInstance: instance,
                                     detailsURL: result.detailsURL,
                                     details: result.details,
                                     canRequest: result.requestMediaType != nil && result.requestMediaId != nil
@@ -1345,6 +1347,7 @@ struct MediaSearchResultPresentation: Identifiable, Equatable {
     let status: String?
     let posterURL: String?
     let artworkHeaders: [String: String]
+    let artworkInstance: ServiceInstance?
     let detailsURL: String?
     let details: [String: String]
     let canRequest: Bool
@@ -1357,6 +1360,7 @@ struct MediaSearchResultPresentation: Identifiable, Equatable {
         status: String?,
         posterURL: String?,
         artworkHeaders: [String: String] = [:],
+        artworkInstance: ServiceInstance? = nil,
         detailsURL: String?,
         details: [String: String],
         canRequest: Bool
@@ -1368,6 +1372,7 @@ struct MediaSearchResultPresentation: Identifiable, Equatable {
         self.status = status
         self.posterURL = posterURL
         self.artworkHeaders = artworkHeaders
+        self.artworkInstance = artworkInstance
         self.detailsURL = detailsURL
         self.details = details
         self.canRequest = canRequest
@@ -1439,6 +1444,7 @@ struct MediaSearchResultRow: View {
         ServiceArtworkView(
             url: result.posterURL.flatMap(URL.init(string:)),
             headers: result.artworkHeaders,
+            instance: result.artworkInstance,
             width: 44,
             height: 64
         ) {
@@ -1570,6 +1576,7 @@ struct MediaSearchResultDetailSheet: View {
         ServiceArtworkView(
             url: result.posterURL.flatMap(URL.init(string:)),
             headers: result.artworkHeaders,
+            instance: result.artworkInstance,
             width: 88,
             height: 128
         ) {
@@ -1761,6 +1768,7 @@ struct ArrRequestConfigurationSheet: View {
 private struct ServiceArtworkView<Placeholder: View>: View {
     let url: URL?
     let headers: [String: String]
+    let instance: ServiceInstance?
     let width: CGFloat
     let height: CGFloat
     @ViewBuilder let placeholder: () -> Placeholder
@@ -1779,7 +1787,7 @@ private struct ServiceArtworkView<Placeholder: View>: View {
         }
         .frame(width: width, height: height)
         .task(id: cacheIdentifier) {
-            await loader.load(url: url, headers: headers)
+            await loader.load(url: url, headers: headers, instance: instance)
         }
     }
 
@@ -1795,21 +1803,26 @@ private final class ServiceArtworkLoader: ObservableObject {
 
     private static let cache = NSCache<NSString, UIImage>()
 
-    func load(url: URL?, headers: [String: String]) async {
+    func load(url: URL?, headers: [String: String], instance: ServiceInstance?) async {
         guard let url else {
             image = nil
             return
         }
 
         let headerKey = headers.keys.sorted().map { "\($0)=\(headers[$0] ?? "")" }.joined(separator: "&")
-        let cacheKey = NSString(string: "\(url.absoluteString)|\(headerKey)")
+        let cacheKey = NSString(string: "\(instance?.id.uuidString ?? "")|\(url.absoluteString)|\(headerKey)")
         if let cached = Self.cache.object(forKey: cacheKey) {
             image = cached
             return
         }
 
         do {
-            let data = try await BaseNetworkEngine.imageData(from: url, headers: headers)
+            let data = try await BaseNetworkEngine.imageData(
+                from: url,
+                headers: headers,
+                instanceId: instance?.id,
+                allowSelfSigned: instance?.allowSelfSigned ?? true
+            )
             guard let decoded = UIImage(data: data) else {
                 image = nil
                 return

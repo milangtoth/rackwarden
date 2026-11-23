@@ -72,6 +72,8 @@
 		663F29038479453699652E94 /* AdGuardHomeQueryLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3E11D0571609D7927FCD5A /* AdGuardHomeQueryLogView.swift */; };
 		698E6B77D281367DA484C23B /* WakapiAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C444B827E878BDFFC5BA3C7C /* WakapiAPIClient.swift */; };
 		6B883FF0F9673181B59F8C83 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85D0D2A2905370C31F3A8ADE /* KeychainService.swift */; };
+		7AC3E5500000000000000BA1 /* AccessProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA1 /* AccessProfileStore.swift */; };
+		7AC3E5500000000000000BA0 /* AccessProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA0 /* AccessProfile.swift */; };
 		6DEEA589BD92BE70DF884F07 /* PangolinComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB703E4CE642EF44D10991B /* PangolinComponents.swift */; };
 		6E756D41A4E6231DF6AD016E /* LidarrModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A351665E7EFAF8D4A3A05A /* LidarrModels.swift */; };
 		6F0B15FC2525EA13C63611B5 /* PinSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C61051F7EA9F32A6342570D /* PinSetupView.swift */; };
@@ -122,6 +124,7 @@
 		A08D2B6FBC3D9252E47321FF /* AdGuardHomeUserRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44370CC6FB6ADE55FA632A02 /* AdGuardHomeUserRulesView.swift */; };
 		A15E4596A2950B61F233E229 /* UptimeKumaDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C16B119CB2EDEE60B4784D /* UptimeKumaDashboard.swift */; };
 		A1B0DB1FF6B1CB2BEB21B2CE /* KeychainServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */; };
+		7AC3E5500000000000000BA2 /* AccessProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA2 /* AccessProfileTests.swift */; };
 		A283181CEA487B0C8346D967 /* PiHoleAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B236EC8434642BB311F3E1A8 /* PiHoleAPIClient.swift */; };
 		A3DF6B4D547020804E10A0C0 /* HealthchecksDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4425B283650DDB0057DE0E75 /* HealthchecksDashboard.swift */; };
 		A3E3BAB096611E807728CA89 /* ContainerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3116D5544353B573C4C2B0B /* ContainerListView.swift */; };
@@ -307,6 +310,8 @@
 		853EA1B757B0BD3540F2AEED /* PatchmonModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchmonModels.swift; sourceTree = "<group>"; };
 		8569FC25F0824870C9BFD6A2 /* NpmProxyHostCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmProxyHostCard.swift; sourceTree = "<group>"; };
 		85D0D2A2905370C31F3A8ADE /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA1 /* AccessProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessProfileStore.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA0 /* AccessProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AccessProfile.swift; path = ../Models/AccessProfile.swift; sourceTree = "<group>"; };
 		88B51084F8D0D0D7C999B8C3 /* BeszelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeszelModels.swift; sourceTree = "<group>"; };
 		8904009FE0CC197DE3B1492A /* NpmStreamCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmStreamCard.swift; sourceTree = "<group>"; };
 		8D02DC8E1FAB21C2D68A01A6 /* GenericMediaDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericMediaDashboard.swift; sourceTree = "<group>"; };
@@ -393,6 +398,7 @@
 		FC6C069732CC13919CD60F36 /* Translations+French.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Translations+French.swift"; sourceTree = "<group>"; };
 		FC89D463559422B61BC300AF /* ContainerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerDetailView.swift; sourceTree = "<group>"; };
 		FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA2 /* AccessProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessProfileTests.swift; sourceTree = "<group>"; };
 		FDFB37C2FF152CEF28395F2C /* UniFiDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniFiDashboard.swift; sourceTree = "<group>"; };
 		FE7A7BFF374B6DE9CE7384EE /* PiHoleDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiHoleDashboard.swift; sourceTree = "<group>"; };
 		FEF0A029C7F3CF79994A268B /* NpmRedirectionHostForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmRedirectionHostForm.swift; sourceTree = "<group>"; };
@@ -998,6 +1004,8 @@
 				575579918416C21F4E6DC488 /* BackupManager.swift */,
 				39AD858A4CEA15DE099AC986 /* BackupModels.swift */,
 				85D0D2A2905370C31F3A8ADE /* KeychainService.swift */,
+				7AC3E5500000000000000FA1 /* AccessProfileStore.swift */,
+				7AC3E5500000000000000FA0 /* AccessProfile.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1231,6 +1239,7 @@
 				A1C0C96DF48BA12ABCC04C11 /* BackupModelsTests.swift */,
 				DB311F83CBAAC39C90D50E6D /* FormattersTests.swift */,
 				FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */,
+				7AC3E5500000000000000FA2 /* AccessProfileTests.swift */,
 				94D7A0C04FD3A10D46F836A9 /* ModelDecodingTests.swift */,
 				57CF72E451CED741576C2F4D /* ServicesStoreTests.swift */,
 			);
@@ -1495,6 +1504,8 @@
 				CD29007C4FB0AD271F85673C /* JellystatAPIClient.swift in Sources */,
 				06B033BE66307E6CC8E75459 /* JellystatDashboard.swift in Sources */,
 				6B883FF0F9673181B59F8C83 /* KeychainService.swift in Sources */,
+				7AC3E5500000000000000BA1 /* AccessProfileStore.swift in Sources */,
+				7AC3E5500000000000000BA0 /* AccessProfile.swift in Sources */,
 				4CF60BF28CB87B137D89A229 /* KomodoAPIClient.swift in Sources */,
 				1497D7B4F3F97AE5825880D0 /* KomodoDashboard.swift in Sources */,
 				FA7A4B88DACB08CBE39AAF48 /* KomodoModels.swift in Sources */,
@@ -1620,6 +1631,7 @@
 				83C02FB2B277928F3C9E720A /* BackupModelsTests.swift in Sources */,
 				D76DF8769FE2AE2032847D05 /* FormattersTests.swift in Sources */,
 				A1B0DB1FF6B1CB2BEB21B2CE /* KeychainServiceTests.swift in Sources */,
+				7AC3E5500000000000000BA2 /* AccessProfileTests.swift in Sources */,
 				D84F9D353E2953087A1E5F7D /* ModelDecodingTests.swift in Sources */,
 				E75752B2EF79FC31623F21A3 /* ServicesStoreTests.swift in Sources */,
 			);

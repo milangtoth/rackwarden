@@ -87,7 +87,7 @@ actor NginxProxyManagerAPIClient {
         req.httpBody = body
         req.timeoutInterval = 8
 
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
             throw APIError.custom("Authentication failed. Check your email and password.")

@@ -29,6 +29,7 @@ struct BackupServiceEntry: Codable {
     let allowSelfSigned: Bool
     let password: String?
     let isPreferred: Bool
+    var accessProfile: AccessProfile? = nil
 }
 
 // MARK: - ServiceType ↔ Backup String Mapping
@@ -191,7 +192,7 @@ enum BackupServiceTypeMapper {
 
 extension ServiceInstance {
     /// Create a BackupServiceEntry from this instance.
-    func toBackupEntry(isPreferred: Bool) -> BackupServiceEntry {
+    func toBackupEntry(isPreferred: Bool, accessProfile: AccessProfile? = nil) -> BackupServiceEntry {
         BackupServiceEntry(
             type: BackupServiceTypeMapper.backupKey(for: type),
             label: displayLabel,
@@ -207,7 +208,8 @@ extension ServiceInstance {
             fallbackUrl: fallbackUrl,
             allowSelfSigned: allowSelfSigned,
             password: password,
-            isPreferred: isPreferred
+            isPreferred: isPreferred,
+            accessProfile: accessProfile?.withoutCookies
         )
     }
 }

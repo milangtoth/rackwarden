@@ -1208,6 +1208,9 @@ struct Translations {
     let errorHttp: String
     let errorDecoding: String
     let errorUnauthorized: String
+    let errorTwoFactorRequired: String
+    let errorForwardAuthRequired: String
+    let errorForwardAuthInsecure: String
     let errorBothFailed: String
     let errorUnknown: String
     let errorAtsRequiresSecure: String

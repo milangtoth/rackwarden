@@ -65,7 +65,7 @@ actor GiteaAPIClient {
 
     private func authenticateAgainst(url: String, username: String, password: String) async throws -> (token: String, username: String) {
         let basicAuth = "Basic " + Data("\(username):\(password)".utf8).base64EncodedString()
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
 
         // Verify credentials via /user
         guard let userURL = URL(string: "\(url)/api/v1/user") else { throw APIError.invalidURL }

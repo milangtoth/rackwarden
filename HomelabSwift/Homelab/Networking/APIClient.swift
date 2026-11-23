@@ -60,8 +60,13 @@ final class BaseNetworkEngine: Sendable {
         return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
     }
 
-    static func authSession(allowSelfSigned: Bool, timeout: TimeInterval) -> URLSession {
-        makeSession(delegate: allowSelfSigned ? insecureDelegate : secureDelegate, timeout: timeout)
+    /// Session for calls made outside the engine, such as logins and WebSockets.
+    static func authSession(instanceId: UUID, allowSelfSigned: Bool, timeout: TimeInterval) -> AccessSession {
+        AccessSession(
+            session: makeSession(delegate: allowSelfSigned ? insecureDelegate : secureDelegate, timeout: timeout),
+            instanceId: instanceId,
+            allowSelfSigned: allowSelfSigned
+        )
     }
 
     init(serviceType: ServiceType, instanceId: UUID, allowSelfSigned: Bool = true) {
@@ -72,25 +77,38 @@ final class BaseNetworkEngine: Sendable {
 
     // MARK: - Session selection
 
-    private var requestSession: URLSession {
-        allowSelfSigned ? Self.insecureRequestSession : Self.secureRequestSession
+    private var requestSession: AccessSession {
+        access(allowSelfSigned ? Self.insecureRequestSession : Self.secureRequestSession)
     }
 
-    private var pingSession: URLSession {
-        allowSelfSigned ? Self.insecurePingSession : Self.securePingSession
+    private var pingSession: AccessSession {
+        access(allowSelfSigned ? Self.insecurePingSession : Self.securePingSession)
     }
 
-    private var imageSession: URLSession {
-        allowSelfSigned ? Self.insecureImageSession : Self.secureImageSession
+    private func access(_ session: URLSession) -> AccessSession {
+        AccessSession(session: session, instanceId: instanceId, allowSelfSigned: allowSelfSigned)
     }
 
-    static func imageData(from url: URL, headers: [String: String] = [:]) async throws -> Data {
+    static func imageData(
+        from url: URL,
+        headers: [String: String] = [:],
+        instanceId: UUID? = nil,
+        allowSelfSigned: Bool = true
+    ) async throws -> Data {
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
         headers.forEach { key, value in
             request.setValue(value, forHTTPHeaderField: key)
         }
-        let (data, response) = try await Self.insecureImageSession.data(for: request)
+        let session = allowSelfSigned ? Self.insecureImageSession : Self.secureImageSession
+        let (data, response): (Data, URLResponse)
+        if let instanceId {
+            (data, response) = try await AccessSession(
+                session: session, instanceId: instanceId, allowSelfSigned: allowSelfSigned
+            ).data(for: request)
+        } else {
+            (data, response) = try await session.data(for: request)
+        }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.custom("Invalid image response")
         }
@@ -371,6 +389,67 @@ final class BaseNetworkEngine: Sendable {
             let body = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
             throw APIError.httpError(statusCode: http.statusCode, body: body)
         }
+    }
+}
+
+/// Adds an instance's proxy credentials to requests and keeps them on their origin.
+struct AccessSession: Sendable {
+    let session: URLSession
+    let instanceId: UUID
+    let allowSelfSigned: Bool
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        guard let (prepared, guardian) = try prepare(request) else {
+            return try await session.data(for: request)
+        }
+        let result = try await session.data(for: prepared, delegate: guardian)
+        if guardian.wasBlocked { throw APIError.forwardAuthRequired }
+        return result
+    }
+
+    func webSocketTask(with url: URL) throws -> URLSessionWebSocketTask {
+        guard let (prepared, guardian) = try prepare(URLRequest(url: url)) else {
+            return session.webSocketTask(with: url)
+        }
+        let task = session.webSocketTask(with: prepared)
+        task.delegate = guardian
+        return task
+    }
+
+    private func prepare(_ request: URLRequest) throws -> (URLRequest, RedirectGuard)? {
+        guard let profile = AccessProfileStore.shared.profile(for: instanceId),
+              let prepared = try profile.prepared(request, allowSelfSigned: allowSelfSigned),
+              let url = prepared.url, let origin = AccessOrigin(url: url) else { return nil }
+        return (prepared, RedirectGuard(origin: origin))
+    }
+}
+
+/// Stops redirects that would carry proxy credentials to another origin.
+final class RedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let origin: AccessOrigin
+    private let lock = NSLock()
+    private var blocked = false
+
+    init(origin: AccessOrigin) {
+        self.origin = origin
+    }
+
+    var wasBlocked: Bool { lock.withLock { blocked } }
+
+    func allows(_ url: URL?) -> Bool {
+        if let url, AccessOrigin(url: url) == origin { return true }
+        lock.withLock { blocked = true }
+        return false
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(allows(request.url) ? request : nil)
     }
 }
 
