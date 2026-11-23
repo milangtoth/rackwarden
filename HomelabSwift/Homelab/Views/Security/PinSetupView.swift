@@ -95,32 +95,23 @@ struct PinSetupView: View {
                     .frame(width: 200, height: 200)
                     .blur(radius: 50)
 
-                if let icon = UIImage(named: "AppIconImage") {
-                    Image(uiImage: icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 140, height: 140)
-                        .clipShape(RoundedRectangle(cornerRadius: 32))
-                        .shadow(color: palette.accent.opacity(colorScheme == .dark ? 0.36 : 0.18), radius: 25, x: 0, y: 15)
-                } else {
-                    Image(systemName: "house.fill")
-                        .font(.system(size: 72))
-                        .foregroundStyle(palette.accent)
-                        .frame(width: 140, height: 140)
-                        .background(palette.iconFill, in: RoundedRectangle(cornerRadius: 32))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 32)
-                                .stroke(palette.iconStroke, lineWidth: 1.1)
-                        )
-                        .shadow(color: palette.accent.opacity(colorScheme == .dark ? 0.26 : 0.12), radius: 20, x: 0, y: 12)
-                }
+                Image("AppIconPreviewDefault")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 140, height: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                    .shadow(color: palette.accent.opacity(colorScheme == .dark ? 0.36 : 0.18), radius: 25, x: 0, y: 15)
+                    .accessibilityHidden(true)
             }
 
             VStack(spacing: 32) {
                 VStack(spacing: 16) {
                     Text(localizer.t.onboardingWelcome)
-                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
                         .foregroundStyle(palette.primaryText)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, 24)
 
                     Text(localizer.t.onboardingWelcomeDesc)
                         .font(.title3)

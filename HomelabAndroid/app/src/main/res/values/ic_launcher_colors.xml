@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background_default">#073B33</color>
+    <color name="ic_launcher_background_default">#0D1114</color>
     <color name="ic_launcher_background_dark">#0D1114</color>
     <color name="ic_launcher_background_clear_light">#EDF1F0</color>
     <color name="ic_launcher_background_clear_dark">#2A302E</color>
     <color name="ic_launcher_background_tinted_light">#E3F3EE</color>
-    <color name="ic_launcher_background_tinted_dark">#0D1114</color>
+    <color name="ic_launcher_background_tinted_dark">#073B33</color>
 </resources>

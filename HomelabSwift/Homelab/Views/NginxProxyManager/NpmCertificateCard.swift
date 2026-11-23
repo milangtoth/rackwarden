@@ -3,7 +3,7 @@ import SwiftUI
 struct NpmCertificateCard: View {
     let certificate: NpmCertificate
     let npmColor: Color
-    let t: Translations
+    let t: TranslationCatalog
     let inUse: Bool
     var onRenew: (() -> Void)?
     var onDelete: (() -> Void)?

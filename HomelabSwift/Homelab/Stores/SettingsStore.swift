@@ -270,6 +270,13 @@ final class SettingsStore {
             return
         }
 
+        // This icon became the standard one, so its old name no longer exists.
+        if UIApplication.shared.alternateIconName == "AppIconTintedDark" {
+            UIApplication.shared.setAlternateIconName(nil)
+            appIcon = .default
+            return
+        }
+
         let currentSystemIcon = AppIconOption.fromAlternateIconName(UIApplication.shared.alternateIconName)
         if currentSystemIcon != appIcon {
             appIcon = currentSystemIcon
@@ -456,7 +463,7 @@ enum AppIconOption: String, CaseIterable {
     case clearLight
     case clearDark
     case tintedLight
-    case tintedDark
+    case green
 
     var alternateIconName: String? {
         switch self {
@@ -470,8 +477,8 @@ enum AppIconOption: String, CaseIterable {
             return "AppIconClearDark"
         case .tintedLight:
             return "AppIconTintedLight"
-        case .tintedDark:
-            return "AppIconTintedDark"
+        case .green:
+            return "AppIconGreen"
         }
     }
 
@@ -485,8 +492,8 @@ enum AppIconOption: String, CaseIterable {
             return .clearDark
         case "AppIconTintedLight":
             return .tintedLight
-        case "AppIconTintedDark":
-            return .tintedDark
+        case "AppIconGreen":
+            return .green
         default:
             return .default
         }
@@ -504,8 +511,8 @@ enum AppIconOption: String, CaseIterable {
             return "AppIconPreviewClearDark"
         case .tintedLight:
             return "AppIconPreviewTintedLight"
-        case .tintedDark:
-            return "AppIconPreviewTintedDark"
+        case .green:
+            return "AppIconPreviewGreen"
         }
     }
 }

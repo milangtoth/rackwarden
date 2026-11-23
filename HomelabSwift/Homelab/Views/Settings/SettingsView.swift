@@ -297,8 +297,8 @@ struct SettingsView: View {
             return localizer.t.settingsAppIconClearDark
         case .tintedLight:
             return localizer.t.settingsAppIconTintedLight
-        case .tintedDark:
-            return localizer.t.settingsAppIconTintedDark
+        case .green:
+            return localizer.t.settingsAppIconGreen
         }
     }
 
@@ -313,19 +313,11 @@ struct SettingsView: View {
 
             VStack(spacing: 0) {
                 ContactRow(
-                    title: localizer.t.settingsContactTelegram,
-                    iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/telegram.png",
-                    fallbackSystemName: "paperplane.fill",
-                    url: "https://t.me/finalyxre",
-                    color: Color(hex: "#26A5E4")
-                )
-                Divider().padding(.horizontal, 16)
-                ContactRow(
                     title: localizer.t.settingsContactLinuxUpdate,
                     iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/github.png",
                     fallbackSystemName: "chevron.left.slash.chevron.right",
                     url: "https://github.com/milangtoth/Rackwarden",
-                    color: Color(hex: "#24292F")
+                    color: .primary
                 )
             }
             .glassCard()
@@ -890,8 +882,9 @@ struct ContactRow: View {
                 case .success(let image):
                     image
                         .resizable()
-                        .renderingMode(.original)
+                        .renderingMode(.template)
                         .scaledToFit()
+                        .foregroundStyle(color)
                 case .failure:
                     Image(systemName: fallbackSystemName)
                         .font(.title3)

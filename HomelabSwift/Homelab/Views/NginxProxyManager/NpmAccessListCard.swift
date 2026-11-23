@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NpmAccessListCard: View {
     let accessList: NpmAccessList
-    let t: Translations
+    let t: TranslationCatalog
     let onEdit: () -> Void
 
     var body: some View {

@@ -425,9 +425,15 @@ actor TrueNASAPIClient {
                 id: stringValue(row["uuid"]) ?? stringValue(row["id"]) ?? "\(message.hashValue)",
                 level: stringValue(row["level"]) ?? stringValue(row["klass"]) ?? "INFO",
                 message: message,
-                createdAt: stringValue(row["datetime"]) ?? stringValue(row["created_at"])
+                createdAt: alertDate(row["datetime"]) ?? stringValue(row["datetime"]) ?? stringValue(row["created_at"])
             )
         }
+    }
+
+    /// TrueNAS sends dates as {"$date": milliseconds}.
+    private static func alertDate(_ raw: Any?) -> String? {
+        guard let milliseconds = doubleValue((raw as? [String: Any])?["$date"]) else { return nil }
+        return Date(timeIntervalSince1970: milliseconds / 1000).formatted(date: .abbreviated, time: .shortened)
     }
 
     private static func parseServices(_ object: Any) -> [TrueNASServiceStatus] {

@@ -29,10 +29,10 @@
 				<key>CFBundleIconName</key>
 				<string>AppIconDark</string>
 			</dict>
-			<key>AppIconTintedDark</key>
+			<key>AppIconGreen</key>
 			<dict>
 				<key>CFBundleIconName</key>
-				<string>AppIconTintedDark</string>
+				<string>AppIconGreen</string>
 			</dict>
 			<key>AppIconTintedLight</key>
 			<dict>

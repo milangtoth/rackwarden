@@ -3,7 +3,7 @@ import SwiftUI
 struct NpmDeadHostCard: View {
     let host: NpmDeadHost
     let npmColor: Color
-    let t: Translations
+    let t: TranslationCatalog
 
     private var statusColor: Color {
         host.isEnabled ? AppTheme.running : AppTheme.textMuted

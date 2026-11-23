@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7AC3E5500000000000000BB5 /* LauncherComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB5 /* LauncherComponents.swift */; };
 		7AC3E5500000000000000BB4 /* DockgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB4 /* DockgeTests.swift */; };
 		7AC3E5500000000000000BB3 /* ScrutinyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB3 /* ScrutinyTests.swift */; };
 		7AC3E5500000000000000BB2 /* DockgeDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB2 /* DockgeDashboard.swift */; };
@@ -227,6 +228,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		7AC3E5500000000000000FB5 /* LauncherComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherComponents.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FB4 /* DockgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DockgeTests.swift; path = DockgeTests.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FB3 /* ScrutinyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScrutinyTests.swift; path = ScrutinyTests.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FB2 /* DockgeDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DockgeDashboard.swift; path = Dockge/DockgeDashboard.swift; sourceTree = "<group>"; };
@@ -757,6 +759,7 @@
 		5A93214C3BDCB9BEC5FCCD73 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				7AC3E5500000000000000FB5 /* LauncherComponents.swift */,
 				DBB688D017EE8175FB27EC7D /* ServiceErrorView.swift */,
 				0F13CBE9BF5234A3FF34586F /* ServiceIconView.swift */,
 			);
@@ -1496,6 +1499,7 @@
 				63A39B89AC9B8F48B3BC3147 /* APIClient.swift in Sources */,
 				C86FF5E6A543278A18B16E9B /* APIError.swift in Sources */,
 				7AC3E5500000000000000BA6 /* ForwardAuth.swift in Sources */,
+				7AC3E5500000000000000BB5 /* LauncherComponents.swift in Sources */,
 				7AC3E5500000000000000BAB /* OAuth.swift in Sources */,
 				7AC3E5500000000000000BB2 /* DockgeDashboard.swift in Sources */,
 				7AC3E5500000000000000BB1 /* ScrutinyDashboard.swift in Sources */,
@@ -1724,7 +1728,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C7F560D9B1083811461B4B44 /* Signing.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconTintedDark";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconGreen";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Homelab/Homelab.entitlements;
@@ -1760,7 +1764,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C7F560D9B1083811461B4B44 /* Signing.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconTintedDark";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconGreen";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Homelab/Homelab.entitlements;

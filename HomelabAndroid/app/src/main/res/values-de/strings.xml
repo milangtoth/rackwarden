@@ -255,7 +255,7 @@
     <string name="settings_app_icon_clear_light">Klar hell</string>
     <string name="settings_app_icon_clear_dark">Klar dunkel</string>
     <string name="settings_app_icon_tinted_light">Getönt hell</string>
-    <string name="settings_app_icon_tinted_dark">Getönt dunkel</string>
+    <string name="settings_app_icon_tinted_dark">Grün</string>
     <string name="settings_home_cyberpunk_title">Cyberpunk-Home-Karten</string>
     <string name="settings_home_cyberpunk_desc">Wendet Neon-Ränder und Markenverläufe auf die Service-Karten auf der Startseite an.</string>
     <string name="settings_language_label">Sprache</string>
@@ -272,7 +272,6 @@
     <string name="settings_update_dismiss">Ausblenden</string>
     <string name="update_popup_title">Update verfügbar</string>
     <string name="update_popup_body">Eine neue Version von Homelab ist verfügbar. Jetzt aktualisieren für die neuesten Funktionen.</string>
-    <string name="settings_contact_telegram">Telegram</string>
     <string name="settings_contact_repository">GitHub</string>
     <string name="settings_debug_label">Debug</string>
     <string name="settings_debug_logs_desc">Logs anzeigen, um Verbindungs- und Parsing-Probleme zu beheben.</string>

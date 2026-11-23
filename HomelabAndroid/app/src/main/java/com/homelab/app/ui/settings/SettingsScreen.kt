@@ -759,12 +759,6 @@ fun SettingsScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     ContactChip(
-                        label = stringResource(R.string.settings_contact_telegram),
-                        iconUrl = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/telegram.png",
-                        onClick = { uriHandler.openUri("https://t.me/finalyxre") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContactChip(
                         label = stringResource(R.string.settings_contact_repository),
                         iconUrl = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/github.png",
                         onClick = { uriHandler.openUri("https://github.com/milangtoth/Rackwarden") },

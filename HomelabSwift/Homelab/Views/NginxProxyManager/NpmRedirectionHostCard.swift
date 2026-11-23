@@ -3,7 +3,7 @@ import SwiftUI
 struct NpmRedirectionHostCard: View {
     let host: NpmRedirectionHost
     let npmColor: Color
-    let t: Translations
+    let t: TranslationCatalog
 
     private var statusColor: Color {
         host.isEnabled ? AppTheme.running : AppTheme.textMuted

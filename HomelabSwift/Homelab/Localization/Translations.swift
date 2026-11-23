@@ -990,11 +990,10 @@ struct Translations {
     let settingsAppIconClearLight: String
     let settingsAppIconClearDark: String
     let settingsAppIconTintedLight: String
-    let settingsAppIconTintedDark: String
+    let settingsAppIconGreen: String
     let settingsHomeCyberpunkCards: String
     let settingsHomeCyberpunkCardsDesc: String
     let settingsContacts: String
-    let settingsContactTelegram: String
     let settingsContactLinuxUpdate: String
     let settingsHideService: String
     let settingsShowService: String

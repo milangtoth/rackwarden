@@ -18,7 +18,6 @@ struct HomeView: View {
     @State private var isViewVisible = false
 
     private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
-    private let tailscaleIconURL = URL(string: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/tailscale.png")
 
     private var hiddenServiceKeys: Set<String> {
         settingsStore.hiddenServices
@@ -50,12 +49,6 @@ struct HomeView: View {
         }
     }
 
-    private var hasUnreachableService: Bool {
-        visibleTypes
-            .flatMap { servicesStore.instances(for: $0) }
-            .contains { servicesStore.reachability(for: $0.id) == false }
-    }
-
     private var reachabilityHash: String {
         visibleTypes.flatMap { servicesStore.instances(for: $0) }.map { instance in
             let r = servicesStore.reachability(for: instance.id)
@@ -70,20 +63,16 @@ struct HomeView: View {
         }.joined(separator: ",")
     }
 
-    private var suppressTailscaleSection: Bool {
-        !servicesStore.instances(for: .pangolin).isEmpty && servicesStore.isTailscaleConnected
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
                 LazyVStack(spacing: 0) {
-                    headerSection
-                    if (hasUnreachableService || servicesStore.isTailscaleConnected) && !suppressTailscaleSection {
-                        tailscaleSection
+                    LauncherHeader(title: localizer.t.launcherTitle, icon: "bolt.fill", count: connectedHomeCount) {
+                        showingServiceOrder = true
                     }
+                    TailscaleCard()
                     serviceGrid
-                    footerSection
+                    LauncherFooter(count: connectedHomeCount)
                 }
                 .padding(.horizontal, 16)
             }
@@ -136,124 +125,6 @@ struct HomeView: View {
         }
     }
 
-    private var headerSection: some View {
-        HStack {
-            Text(localizer.t.launcherTitle)
-                .font(.largeTitle)
-                .fontWeight(.heavy)
-                .foregroundStyle(.primary)
-
-            Spacer()
-
-            HStack(spacing: 8) {
-                HStack(spacing: 5) {
-                    Image(systemName: "bolt.fill")
-                        .font(.caption2)
-                        .accessibilityHidden(true)
-                    Text("\(connectedHomeCount)")
-                        .font(.subheadline.bold())
-                }
-                .foregroundStyle(AppTheme.accent)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .glassCard(cornerRadius: 20, tint: AppTheme.accent.opacity(0.15))
-
-                Button {
-                    HapticManager.light()
-                    showingServiceOrder = true
-                } label: {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(AppTheme.accent)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.accent.opacity(0.12), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(localizer.t.homeReorderServices)
-            }
-        }
-        .padding(.top, 8)
-        .padding(.bottom, 16)
-    }
-
-    private var tailscaleSection: some View {
-        Button {
-            HapticManager.medium()
-            if let url = URL(string: "tailscale://app") {
-                UIApplication.shared.open(url, options: [:]) { success in
-                    if !success, let appStoreUrl = URL(string: "https://apps.apple.com/app/tailscale/id1475387142") {
-                        UIApplication.shared.open(appStoreUrl)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(AppTheme.surface.opacity(0.95))
-                        .frame(width: 44, height: 44)
-
-                    AsyncImage(url: tailscaleIconURL) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 26, height: 26)
-                        case .failure:
-                            Image(systemName: servicesStore.isTailscaleConnected ? "shield.checkered" : "network.badge.shield.half.filled")
-                                .font(.title3)
-                                .foregroundStyle(servicesStore.isTailscaleConnected ? AppTheme.running : AppTheme.textMuted)
-                        case .empty:
-                            ProgressView()
-                                .scaleEffect(0.7)
-                        @unknown default:
-                            EmptyView()
-                        }
-                    }
-                    .accessibilityHidden(true)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(servicesStore.isTailscaleConnected ? localizer.t.tailscaleConnected : localizer.t.tailscaleOpen)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.primary)
-
-                    Text(servicesStore.isTailscaleConnected ? localizer.t.tailscaleSecure : localizer.t.tailscaleOpenDesc)
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textMuted)
-                }
-
-                Spacer(minLength: 0)
-
-                if servicesStore.isTailscaleConnected {
-                    Image(systemName: "checkmark.seal.fill")
-                        .foregroundStyle(AppTheme.running)
-                        .font(.title3)
-                        .accessibilityHidden(true)
-                } else {
-                    HStack(spacing: 4) {
-                        Text(localizer.t.tailscaleBadge)
-                            .font(.caption2.bold())
-                            .foregroundStyle(AppTheme.textMuted)
-                        Image(systemName: "chevron.right")
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.textMuted)
-                            .accessibilityHidden(true)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.gray.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity)
-            .glassCard(tint: servicesStore.isTailscaleConnected ? AppTheme.running.opacity(0.05) : nil)
-        }
-        .buttonStyle(.plain)
-        .padding(.bottom, 16)
-    }
-
     private var serviceGrid: some View {
         GlassGroup(spacing: 16) {
             LazyVGrid(columns: columns, spacing: 14) {
@@ -273,7 +144,7 @@ struct HomeView: View {
                                 isPinging: false,
                                 summary: nil,
                                 isSummaryLoading: false,
-                                t: localizer.translations
+                                t: localizer.t
                             )
                         }
                         .buttonStyle(.plain)
@@ -289,7 +160,7 @@ struct HomeView: View {
                                 isPinging: servicesStore.isPinging(instanceId: instance.id),
                                 summary: summaryData[instance.id],
                                 isSummaryLoading: summaryData[instance.id] == nil && summaryLoading,
-                                t: localizer.translations
+                                t: localizer.t
                             ) {
                                 Task { await servicesStore.checkReachability(for: instance.id) }
                             }
@@ -316,15 +187,6 @@ struct HomeView: View {
                 }
             }
         }
-    }
-
-    private var footerSection: some View {
-        Text("\(localizer.t.launcherServices) • \(connectedHomeCount) \(localizer.t.launcherConnected.sentenceCased())")
-            .font(.caption)
-            .foregroundStyle(AppTheme.textMuted)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 28)
-            .padding(.bottom, 40)
     }
 
     @ViewBuilder
@@ -772,7 +634,7 @@ private struct ServiceOrderSheet: View {
     }
 }
 
-private struct ServiceCardContent: View {
+struct ServiceCardContent: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let type: ServiceType
@@ -783,8 +645,10 @@ private struct ServiceCardContent: View {
     var needsSignIn = false
     let isPinging: Bool
     let summary: ServiceSummaryInfo?
+    /// A short second line under the name.
+    var detail: String? = nil
     let isSummaryLoading: Bool
-    let t: Translations
+    let t: TranslationCatalog
     var onRefresh: (() -> Void)? = nil
     
     private var cardShape: RoundedRectangle {
@@ -894,14 +758,18 @@ private struct ServiceCardContent: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
+            if let detail, !detail.isEmpty {
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(AppTheme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.top, 2)
+            }
+
             Spacer(minLength: 6)
 
-            HStack(spacing: 6) {
-                statusBadge
-
-
-
-            }
+            statusBadge
         }
         .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
         .padding(14)

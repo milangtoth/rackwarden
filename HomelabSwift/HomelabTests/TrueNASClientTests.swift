@@ -149,6 +149,21 @@ final class TrueNASClientTests: XCTestCase {
         XCTAssertEqual(server.opened, 4)
     }
 
+    func testAlertsAreReadable() {
+        let ups = TrueNASAlertText(html: "UPS ups is on line power.<br><br>UPS Statistics: 'ups'<br><br>Statistics recovered:<br><br>1) Battery charge (percent)<br> &nbsp;&nbsp;&nbsp; battery.charge: 95<br><br>2) Battery level remaining (percent) when UPS switches to Low Battery (LB)<br> &nbsp;&nbsp;&nbsp; battery.charge.low: 10<br><br>3) Battery runtime (seconds)<br> &nbsp;&nbsp;&nbsp; battery.runtime: 1813<br><br>")
+        XCTAssertEqual(ups.text, "UPS ups is on line power.")
+        XCTAssertEqual(ups.readings.map(\.label), [
+            "Battery charge", "Battery level remaining when UPS switches to Low Battery (LB)", "Battery runtime"
+        ])
+        XCTAssertEqual(ups.readings.first?.value, "95%")
+        XCTAssertEqual(ups.readings.count, 3)
+
+        XCTAssertEqual(TrueNASAlertText(html: "Updates are available for 2 applications: a, b").text, "Updates are available for 2 applications: a, b")
+        XCTAssertEqual(TrueNASAlertText(html: "<p>A &amp; B</p><ul><li>one</li><li>5 &lt; 6</li></ul>").text, "A & B\n• one\n• 5 < 6")
+        XCTAssertEqual(TrueNASAlertText(html: "a < b and &amp;lt; stays").text, "a < b and &lt; stays")
+        XCTAssertEqual(TrueNASAlertText(html: "1) first<br>2) second").text, "1) first\n2) second")
+    }
+
     func testAnExpiredProxySessionIsReported() async {
         let client = TrueNASAPIClient(instanceId: UUID(), makeChannel: { _ in SignedOutChannel() })
         do {
