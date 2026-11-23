@@ -8,6 +8,7 @@
 A native app to watch and manage your self-hosted services from one place,<br>
 even when they sit behind a login proxy.
 
+[![Download](https://img.shields.io/github/v/release/milangtoth/Rackwarden?label=download&color=12D6B3)](https://github.com/milangtoth/Rackwarden/releases/latest)
 [![iOS 26+](https://img.shields.io/badge/iOS-26%2B-000000?logo=apple&logoColor=white)](#ios)
 [![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](#android)
 [![SwiftUI](https://img.shields.io/badge/SwiftUI-Swift%206-F05138?logo=swift&logoColor=white)](HomelabSwift)
@@ -31,8 +32,8 @@ even when they sit behind a login proxy.
 ---
 
 > [!NOTE]
-> Rackwarden hasn't published a release yet, so for now you [build it from source](#install).
-> Version 2.0.0 is coming to iOS first. The Android app and the project folders still use the Homelab name.
+> Version 2.0.0 is for iOS. The Android app has no download yet and, like the project
+> folders, still uses the Homelab name.
 
 ## Why
 
@@ -119,14 +120,42 @@ attention, and the few actions you actually want on the go.
 
 ## Install
 
-There are no downloads yet. Once released, builds will appear on the
-[Releases page](https://github.com/milangtoth/Rackwarden/releases).
-
 ### iOS
 
-You need a Mac with Xcode 26 or later and a device or simulator with iOS 26.
+Rackwarden isn't on the App Store. You install it with
+[AltStore Classic](https://altstore.io) or [SideStore](https://sidestore.io), which
+sign it with your own Apple ID. You need an iPhone with iOS 26 or later.
 
-**1. Get the code**
+**1. Set up AltStore Classic or SideStore**
+
+Follow the instructions on their site, if you don't use one of them already.
+
+**2. Add the Rackwarden source**
+
+Add this address under **Sources**, and updates appear there too:
+
+```
+https://raw.githubusercontent.com/milangtoth/Rackwarden/main/apps.json
+```
+
+**3. Install Rackwarden**
+
+Open it from the source and install it. With a free Apple ID, the app has to be
+refreshed every 7 days, which both tools can do for you.
+
+<details>
+<summary>Prefer the file?</summary>
+
+Download **Rackwarden-x.y.z.ipa** from the
+[latest release](https://github.com/milangtoth/Rackwarden/releases/latest) and open it
+with AltStore Classic or SideStore. The file is unsigned, so it can't be installed on
+its own.
+
+</details>
+
+### Build from source
+
+You need a Mac with Xcode 26 or later and a device or simulator with iOS 26.
 
 ```bash
 git clone https://github.com/milangtoth/Rackwarden.git
@@ -134,19 +163,13 @@ cd Rackwarden
 cp HomelabSwift/Config/Signing.xcconfig.example HomelabSwift/Config/Signing.xcconfig
 ```
 
-**2. Set your signing details**
-
 Put your own bundle ID and development team in `HomelabSwift/Config/Signing.xcconfig`.
 Git ignores that file, so set them there rather than under **Signing & Capabilities**.
-
-**3. Run it**
-
-Open `HomelabSwift/Homelab.xcodeproj`, choose your device and press **⌘R**. With a
-free Apple account, the app has to be reinstalled every 7 days.
+Then open `HomelabSwift/Homelab.xcodeproj`, choose your device and press **⌘R**.
 
 ### Android
 
-Open `HomelabAndroid` in Android Studio, let Gradle sync, and run it on a device or
+There is no download yet. Open `HomelabAndroid` in Android Studio, let Gradle sync, and run it on a device or
 emulator with Android 8.0 or later.
 
 ## Usage

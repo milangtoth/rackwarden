@@ -40,7 +40,7 @@ This repository is the single working copy for Rackwarden development.
 - Android-only code/resources require the Android compile check; run Android unit tests when logic, networking, parsing, storage, or ViewModels change.
 - iOS-only code/resources require the iOS compile check; run iOS unit tests when logic, networking, parsing, storage, or model behavior changes.
 - Cross-platform service changes, shared release metadata, or version bumps require both Android and iOS compile checks.
-- Release publishing with user-provided signed `Homelab.ipa` and `Homelab.apk` does not require rebuilding locally unless source code changed in the same task.
+- Release publishing with a user-provided `Rackwarden-x.y.z.apk` or an approved `Rackwarden-x.y.z.ipa` does not require rebuilding locally unless source code changed in the same task.
 - After pushing to `main`, always inspect the GitHub Actions `CI` run. The task is not complete if CI fails.
 
 ## Build Checks
@@ -96,7 +96,8 @@ If the exact simulator is unavailable, list devices with `xcrun simctl list devi
 ## Release Flow
 
 - Release builds are manual unless signing automation is explicitly added later.
-- The user provides the final signed `Homelab.ipa` and/or `Homelab.apk`.
+- iOS: build an unsigned Release `Rackwarden-x.y.z.ipa` from a clean copy of `main` with an empty development team; AltStore Classic / SideStore sign it on install. Check that it contains no signature, provisioning profile, or team ID.
+- Android: the user provides the final signed `Rackwarden-x.y.z.apk`.
 - Create a GitHub release with tag `vX.Y.Z` and upload the assets for each platform being released.
 - The `Update AltStore Source` workflow updates `apps.json` and `app-version.json`.
 - After the workflow succeeds, pull `origin/main`.
