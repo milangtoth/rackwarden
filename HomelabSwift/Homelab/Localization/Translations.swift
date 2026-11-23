@@ -1211,6 +1211,15 @@ struct Translations {
     let errorTwoFactorRequired: String
     let errorForwardAuthRequired: String
     let errorForwardAuthInsecure: String
+    let twoFactorTitle: String
+    let twoFactorCode: String
+    let twoFactorAppMessage: String
+    let twoFactorEmailMessage: String
+    let twoFactorVerify: String
+    let twoFactorResend: String
+    let statusNeedsSignIn: String
+    let errorTwoFactorInvalid: String
+    let errorSignInRequired: String
     let errorBothFailed: String
     let errorUnknown: String
     let errorAtsRequiresSecure: String

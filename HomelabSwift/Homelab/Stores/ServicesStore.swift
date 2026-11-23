@@ -413,9 +413,12 @@ final class ServicesStore {
     private(set) var isReady: Bool = false
     private(set) var reachabilityByInstanceId: [UUID: Bool?] = [:]
     private(set) var pingingByInstanceId: [UUID: Bool] = [:]
+    /// Instances whose session can only be renewed by the user, for example with a 2FA code.
+    private(set) var needsSignInIds: Set<UUID> = []
     private(set) var isTailscaleConnected: Bool = false
 
     private var lastReachabilityCheck: Date?
+    private var reauthenticatingIds: Set<UUID> = []
     private var healthCheckTask: Task<Void, Never>?
     private let clientManager = ServiceClientManager()
 
@@ -553,6 +556,7 @@ final class ServicesStore {
         let normalized = normalizedInstance(instance)
         let previous = instancesById[normalized.id]
         instancesById[normalized.id] = normalized
+        needsSignInIds.remove(normalized.id)
 
         if previous?.type != normalized.type {
             repairPreferredInstance(for: previous?.type)
@@ -574,6 +578,7 @@ final class ServicesStore {
         guard let removed = instancesById.removeValue(forKey: id) else { return }
         reachabilityByInstanceId.removeValue(forKey: id)
         pingingByInstanceId.removeValue(forKey: id)
+        needsSignInIds.remove(id)
         clientManager.removeClient(id: id, type: removed.type)
         AccessProfileStore.shared.set(nil, for: id)
         repairPreferredInstance(for: removed.type)
@@ -942,7 +947,10 @@ final class ServicesStore {
     }
 
     private func handleUnauthorized(instanceId: UUID) async {
-        guard let current = instancesById[instanceId] else { return }
+        guard let current = instancesById[instanceId],
+              !needsSignInIds.contains(instanceId),
+              reauthenticatingIds.insert(instanceId).inserted else { return }
+        defer { reauthenticatingIds.remove(instanceId) }
 
         if current.type == .pihole,
            let password = current.piHoleStoredSecret,
@@ -975,6 +983,10 @@ final class ServicesStore {
                 await configureClient(for: refreshed, refreshPiHoleAuth: false)
                 return
             } catch {
+                if error.needsUserSignIn {
+                    markNeedsSignIn(instanceId, rejectedToken: current.token)
+                    return
+                }
                 // Fall through to marking unreachable.
             }
         }
@@ -993,6 +1005,10 @@ final class ServicesStore {
                 await configureClient(for: refreshed, refreshPiHoleAuth: false)
                 return
             } catch {
+                if error.needsUserSignIn {
+                    markNeedsSignIn(instanceId, rejectedToken: current.token)
+                    return
+                }
                 // Fall through to marking unreachable.
             }
         }
@@ -1016,6 +1032,15 @@ final class ServicesStore {
         }
     }
 
+    func needsSignIn(_ instanceId: UUID) -> Bool {
+        needsSignInIds.contains(instanceId)
+    }
+
+    /// Ignores late failures of a session the user has already replaced.
+    private func markNeedsSignIn(_ instanceId: UUID, rejectedToken: String) {
+        guard instancesById[instanceId]?.token == rejectedToken else { return }
+        needsSignInIds.insert(instanceId)
+    }
 
     private func configureClient(for instance: ServiceInstance, refreshPiHoleAuth: Bool) async {
         switch instance.type {
@@ -1090,6 +1115,11 @@ final class ServicesStore {
             let client = clientManager.beszelClient(id: instance.id)
             await client.configure(url: instance.url, token: instance.token, fallbackUrl: instance.fallbackUrl, email: instance.username, password: instance.password, allowSelfSigned: instance.allowSelfSigned)
             let instanceId = instance.id
+            await client.setSignInRequiredCallback { [weak self] rejectedToken in
+                Task { @MainActor in
+                    self?.markNeedsSignIn(instanceId, rejectedToken: rejectedToken)
+                }
+            }
             await client.setTokenRefreshCallback { [weak self] newToken in
                 Task { @MainActor in
                     guard let self, var current = self.instancesById[instanceId] else { return }
@@ -1191,6 +1221,11 @@ final class ServicesStore {
                 password: instance.password
             , allowSelfSigned: instance.allowSelfSigned)
             let instanceId = instance.id
+            await client.setSignInRequiredCallback { [weak self] rejectedToken in
+                Task { @MainActor in
+                    self?.markNeedsSignIn(instanceId, rejectedToken: rejectedToken)
+                }
+            }
             await client.setTokenRefreshCallback { [weak self] newToken in
                 Task { @MainActor in
                     guard let self, var current = self.instancesById[instanceId] else { return }
@@ -1310,7 +1345,6 @@ final class ServicesStore {
                 apiTokenString: authMode == .apiToken ? instance.apiKey : nil,
                 username: instance.username,
                 password: instance.password,
-                otp: instance.proxmoxOTP,
                 realm: instance.proxmoxRealm,
                 allowSelfSigned: instance.allowSelfSigned
             )
@@ -1348,7 +1382,10 @@ final class ServicesStore {
         return normalized.isEmpty ? nil : normalized
     }
 
-    private func normalizedInstance(_ instance: ServiceInstance) -> ServiceInstance {
+    private func normalizedInstance(_ original: ServiceInstance) -> ServiceInstance {
+        // One-time codes saved by earlier versions are useless and must not be kept.
+        var instance = original
+        instance.proxmoxOTP = nil
         let normalizedUrl = normalizeServiceURL(instance.url, type: instance.type)
         let normalizedFallback = normalizeOptionalURL(instance.fallbackUrl, type: instance.type)
         if normalizedUrl == instance.url && normalizedFallback == instance.fallbackUrl {

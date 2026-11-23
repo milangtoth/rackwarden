@@ -11,6 +11,10 @@ actor NginxProxyManagerAPIClient {
     private var storedPassword: String = ""
     private var isRefreshing = false
     private var onTokenRefreshed: (@Sendable (String) -> Void)?
+    private var onSignInRequired: (@Sendable (String) -> Void)?
+    /// Set once a silent login was asked for a code, so it is not repeated.
+    private var needsSignIn = false
+    private var lastRenewal: Date?
 
     init(instanceId: UUID) {
         self.instanceId = instanceId
@@ -22,6 +26,7 @@ actor NginxProxyManagerAPIClient {
     func configure(url: String, token: String, fallbackUrl: String? = nil, email: String? = nil, password: String? = nil, allowSelfSigned: Bool? = nil) {
         self.baseURL = Self.cleanURL(url)
         self.fallbackURL = Self.cleanURL(fallbackUrl ?? "")
+        if token != self.token { needsSignIn = false }
         self.token = token
         if let email, !email.isEmpty {
             self.email = email
@@ -38,6 +43,36 @@ actor NginxProxyManagerAPIClient {
 
     func setTokenRefreshCallback(_ callback: @escaping @Sendable (String) -> Void) {
         self.onTokenRefreshed = callback
+    }
+
+    func setSignInRequiredCallback(_ callback: @escaping @Sendable (String) -> Void) {
+        self.onSignInRequired = callback
+    }
+
+    /// Extends a valid session in the background so 2FA is not asked for needlessly.
+    private func renewIfNeeded() {
+        guard TokenLifetime.shouldRenew(token, assumedLifetime: 86_400) else { return }
+        if let lastRenewal, Date().timeIntervalSince(lastRenewal) < 600 { return }
+        lastRenewal = Date()
+        Task { await renew() }
+    }
+
+    private func renew() async {
+        let current = token
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+        for base in [baseURL, fallbackURL] where !base.isEmpty {
+            guard let url = URL(string: "\(base)/api/tokens") else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = "GET"
+            authHeaders().forEach { req.setValue($1, forHTTPHeaderField: $0) }
+            guard let (data, resp) = try? await session.data(for: req),
+                  let http = resp as? HTTPURLResponse, http.statusCode == 200,
+                  let renewed = try? NpmLogin.token(from: data, setCookie: http.value(forHTTPHeaderField: "Set-Cookie"), baseURL: base),
+                  !renewed.isEmpty, token == current else { continue }
+            token = renewed
+            onTokenRefreshed?(renewed)
+            return
+        }
     }
 
     private func authHeaders() -> [String: String] {
@@ -67,6 +102,7 @@ actor NginxProxyManagerAPIClient {
         do {
             return try await authenticateAgainst(url: cleanURL, email: email, password: password)
         } catch {
+            if error.needsUserSignIn { throw error }
             let cleanFallback = Self.cleanURL(fallbackUrl ?? "")
             guard !cleanFallback.isEmpty, cleanFallback != cleanURL else {
                 throw error
@@ -93,30 +129,30 @@ actor NginxProxyManagerAPIClient {
             throw APIError.custom("Authentication failed. Check your email and password.")
         }
 
-        let decoded = try JSONDecoder().decode(NpmTokenResponse.self, from: data)
-        var resolvedToken = decoded.resolvedToken
-        
-        // Per NPMplus: Se il token nel JSON è vuoto, cerca nei cookie.
-        if resolvedToken.isEmpty, let setCookie = http.value(forHTTPHeaderField: "Set-Cookie") {
-            // Estrae "token=..." oppure potenziale nome di JWT usando le regex o semplice string parsing.
-            let cookies = setCookie.components(separatedBy: .init(charactersIn: ",;"))
-            for cookie in cookies {
-                let trimmed = cookie.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("token=") {
-                    resolvedToken = String(trimmed.dropFirst("token=".count))
-                    break
-                }
-            }
-        }
+        return try NpmLogin.token(from: data, setCookie: http.value(forHTTPHeaderField: "Set-Cookie"), baseURL: url)
+    }
 
-        guard !resolvedToken.isEmpty else {
-            throw APIError.custom("Authentication failed. Empty token received.")
+    func completeTwoFactor(_ challenge: TwoFactorChallenge, code: String) async throws -> String {
+        guard case .authenticator(let challengeToken) = challenge.kind,
+              let url = URL(string: "\(challenge.baseURL)/api/tokens/2fa") else { throw APIError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["challenge_token": challengeToken, "code": code])
+
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+        let (data, resp) = try await session.data(for: req)
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if [400, 401, 403].contains(status) { throw APIError.twoFactorInvalid }
+        guard status == 200 else {
+            throw APIError.httpError(statusCode: status, body: String(decoding: data, as: UTF8.self))
         }
-        return resolvedToken
+        let cookie = (resp as? HTTPURLResponse)?.value(forHTTPHeaderField: "Set-Cookie")
+        return try NpmLogin.token(from: data, setCookie: cookie, baseURL: challenge.baseURL)
     }
 
     private func refreshToken() async -> Bool {
-        guard !email.isEmpty, !storedPassword.isEmpty, !isRefreshing else { return false }
+        guard !email.isEmpty, !storedPassword.isEmpty, !isRefreshing, !needsSignIn else { return false }
         isRefreshing = true
         defer { isRefreshing = false }
 
@@ -127,17 +163,23 @@ actor NginxProxyManagerAPIClient {
             onTokenRefreshed?(newToken)
             return true
         } catch {
+            if error.needsUserSignIn {
+                needsSignIn = true
+                onSignInRequired?(token)
+            }
             return false
         }
     }
 
     private func withAuthRetry<T>(_ operation: () async throws -> T) async throws -> T {
+        renewIfNeeded()
         do {
             return try await operation()
         } catch {
             if isAuthError(error), await refreshToken() {
                 return try await operation()
             }
+            if needsSignIn, isAuthError(error) { throw APIError.signInRequired }
             throw error
         }
     }

@@ -149,6 +149,20 @@ final class ServicesStoreTests: XCTestCase {
         XCTAssertNil(store.reachability(for: second.id))
     }
 
+    func testSavedOneTimeCodeIsRemoved() async {
+        var instance = ServiceInstance(type: .proxmox, label: "pve", url: "https://pve.invalid", proxmoxOTP: "123456")
+        let store = ServicesStore()
+        await store.saveInstance(instance, triggerReachabilityCheck: false)
+        XCTAssertNil(store.instance(id: instance.id)?.proxmoxOTP)
+
+        instance.label = "old"
+        KeychainService.saveServiceState(ServiceStateV2(instances: [instance], preferredInstanceIdByType: [:]))
+        let reloaded = ServicesStore()
+        await reloaded.initialize()
+        reloaded.stopPeriodicHealthChecks()
+        XCTAssertNil(KeychainService.loadServiceState().instances.first?.proxmoxOTP)
+    }
+
     func testServiceConnectionURLCleaning() {
         let conn = ServiceConnection(type: .portainer, url: "  https://portainer.local///  ", token: "t")
         XCTAssertEqual(conn.url, "https://portainer.local")

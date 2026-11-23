@@ -7,6 +7,7 @@ struct HomeView: View {
     @Environment(Localizer.self) private var localizer
 
     @State private var showLogin: ServiceType? = nil
+    @State private var signInContext: ServiceEditorContext?
     @State private var showingServiceOrder = false
 
     // Summary data (integrated into cards), keyed by instance UUID
@@ -89,6 +90,9 @@ struct HomeView: View {
             .navigationBarHidden(true)
             .sheet(item: $showLogin) { type in
                 ServiceLoginView(serviceType: type)
+            }
+            .sheet(item: $signInContext) { context in
+                ServiceLoginView(serviceType: context.serviceType, existingInstanceId: context.instanceId)
             }
             .sheet(isPresented: $showingServiceOrder) {
                 ServiceOrderSheet()
@@ -269,19 +273,31 @@ struct HomeView: View {
                         .buttonStyle(.plain)
                     case .connected(let type, let instance):
                         let isPreferred = servicesStore.preferredInstance(for: type)?.id == instance.id
-                        NavigationLink(value: HomeServiceRoute(type: type, instanceId: instance.id)) {
-                            ServiceCardContent(
+                        let card = ServiceCardContent(
                                 type: type,
                                 label: instance.displayLabel,
                                 isConnected: true,
                                 isPreferred: isPreferred,
                                 reachable: servicesStore.reachability(for: instance.id),
+                                needsSignIn: servicesStore.needsSignIn(instance.id),
                                 isPinging: servicesStore.isPinging(instanceId: instance.id),
                                 summary: summaryData[instance.id],
                                 isSummaryLoading: summaryData[instance.id] == nil && summaryLoading,
                                 t: localizer.translations
                             ) {
                                 Task { await servicesStore.checkReachability(for: instance.id) }
+                            }
+                        Group {
+                            if servicesStore.needsSignIn(instance.id) {
+                                Button {
+                                    signInContext = ServiceEditorContext(serviceType: type, instanceId: instance.id)
+                                } label: {
+                                    card
+                                }
+                            } else {
+                                NavigationLink(value: HomeServiceRoute(type: type, instanceId: instance.id)) {
+                                    card
+                                }
                             }
                         }
                         .buttonStyle(.plain)
@@ -743,6 +759,7 @@ private struct ServiceCardContent: View {
     let isConnected: Bool
     let isPreferred: Bool
     let reachable: Bool?
+    var needsSignIn = false
     let isPinging: Bool
     let summary: ServiceSummaryInfo?
     let isSummaryLoading: Bool
@@ -893,6 +910,16 @@ private struct ServiceCardContent: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(.gray.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else if needsSignIn {
+            HStack(spacing: 5) {
+                Circle().fill(Color.orange).frame(width: 6, height: 6)
+                Text(t.statusNeedsSignIn)
+                    .font(.caption2.bold())
+                    .foregroundStyle(Color.orange)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         } else if reachable == false {
             HStack(spacing: 5) {
                 Circle().fill(Color.red).frame(width: 6, height: 6)

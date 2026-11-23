@@ -32,6 +32,7 @@ struct ServiceLoginView: View {
     @State private var proxmoxApiTokenSecret = ""
     @State private var unifiAuthMode: UniFiAuthMode = .siteManager
     @State private var showUniFiDemo = false
+    @State private var twoFactorPrompt: TwoFactorPrompt?
 
     private var existingInstance: ServiceInstance? {
         existingInstanceId.flatMap { servicesStore.instance(id: $0) }
@@ -162,6 +163,9 @@ struct ServiceLoginView: View {
                 if !isLoading {
                     AccessProfileStore.shared.discardDraft(draftInstanceId)
                 }
+            }
+            .sheet(item: $twoFactorPrompt) { prompt in
+                TwoFactorSheet(prompt: prompt)
             }
             .sheet(isPresented: $showUniFiDemo) {
                 NavigationStack {
@@ -616,10 +620,24 @@ struct ServiceLoginView: View {
                 await servicesStore.saveInstance(instance, refreshPiHoleAuth: false)
                 HapticManager.success()
                 dismiss()
+            } catch is CancellationError {
+                // The user closed the code prompt.
             } catch {
                 showError(resolveErrorMessage(error))
             }
             isLoading = false
+        }
+    }
+
+    private func promptForCode(
+        _ challenge: TwoFactorChallenge,
+        resend: ((TwoFactorChallenge) async throws -> TwoFactorChallenge)? = nil,
+        verify: @escaping (TwoFactorChallenge, String) async throws -> String
+    ) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            twoFactorPrompt = TwoFactorPrompt(
+                challenge: challenge, resend: resend, verify: verify, continuation: continuation
+            )
         }
     }
 
@@ -1223,7 +1241,16 @@ struct ServiceLoginView: View {
             if let secret, !secret.isEmpty {
                 let client = BeszelAPIClient(instanceId: draftInstanceId)
                 await client.configure(url: url, token: existingInstance?.token ?? "", fallbackUrl: fallbackUrl, email: identity, password: secret, allowSelfSigned: allowSelfSigned)
-                token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                do {
+                    token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                } catch APIError.twoFactorRequired(let challenge) {
+                    let sent = try await client.requestTwoFactorCode(challenge)
+                    token = try await promptForCode(
+                        sent,
+                        resend: { try await client.requestTwoFactorCode($0) },
+                        verify: { try await client.completeTwoFactor($0, code: $1) }
+                    )
+                }
                 storedPassword = secret
             } else if let existingToken = existingInstance?.token, !existingToken.isEmpty {
                 token = existingToken
@@ -1295,7 +1322,14 @@ struct ServiceLoginView: View {
             if let secret, !secret.isEmpty {
                 let client = NginxProxyManagerAPIClient(instanceId: draftInstanceId)
                 await client.configure(url: url, token: existingInstance?.token ?? "", fallbackUrl: fallbackUrl, email: identity, password: secret, allowSelfSigned: allowSelfSigned)
-                token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                do {
+                    token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                } catch APIError.twoFactorRequired(let challenge) {
+                    token = try await promptForCode(
+                        challenge,
+                        verify: { try await client.completeTwoFactor($0, code: $1) }
+                    )
+                }
                 storedPassword = secret
             } else if let existingToken = existingInstance?.token, !existingToken.isEmpty {
                 token = existingToken
@@ -1571,7 +1605,6 @@ struct ServiceLoginView: View {
                     fallbackUrl: fallbackUrl,
                     username: identity,
                     password: resolvedPassword,
-                    otp: mfaCode.trimmingCharacters(in: .whitespacesAndNewlines),
                     realm: resolvedRealm,
                     allowSelfSigned: allowSelfSigned
                 )
@@ -1592,7 +1625,6 @@ struct ServiceLoginView: View {
                     apiKey: result.csrf,
                     proxmoxAuthMode: .credentials,
                     proxmoxRealm: resolvedRealm,
-                    proxmoxOTP: normalizedOptional(mfaCode),
                     fallbackUrl: fallbackUrl,
                     allowSelfSigned: allowSelfSigned,
                     password: resolvedPassword

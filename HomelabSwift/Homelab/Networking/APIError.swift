@@ -72,7 +72,9 @@ public enum APIError: LocalizedError {
     case httpError(statusCode: Int, body: String)
     case decodingError(Error)
     case unauthorized
-    case twoFactorRequired
+    case twoFactorRequired(TwoFactorChallenge)
+    case twoFactorInvalid
+    case signInRequired
     case forwardAuthRequired
     case forwardAuthInsecure
     case bothURLsFailed(primaryError: Error, fallbackError: Error)
@@ -99,6 +101,10 @@ public enum APIError: LocalizedError {
             return t.errorUnauthorized
         case .twoFactorRequired:
             return t.errorTwoFactorRequired
+        case .twoFactorInvalid:
+            return t.errorTwoFactorInvalid
+        case .signInRequired:
+            return t.errorSignInRequired
         case .forwardAuthRequired:
             return t.errorForwardAuthRequired
         case .forwardAuthInsecure:
