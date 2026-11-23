@@ -30,7 +30,9 @@ data class NpmTokenResponse(
 data class NpmTokenResult(
     val result: NpmTokenResponse? = null,
     val token: String? = null,
-    val expires: String? = null
+    val expires: String? = null,
+    @kotlinx.serialization.SerialName("requires_2fa") val requiresTwoFactor: Boolean = false,
+    @kotlinx.serialization.SerialName("challenge_token") val challengeToken: String? = null
 ) {
     val resolvedToken: String
         get() = result?.token ?: token ?: ""

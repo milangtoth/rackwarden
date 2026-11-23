@@ -7,8 +7,14 @@ import com.homelab.app.data.repository.NginxProxyManagerRepository
 import com.homelab.app.data.repository.ProxmoxRepository
 import com.homelab.app.data.repository.ServiceInstancesRepository
 import com.homelab.app.util.GlobalEventBus
+import com.homelab.app.data.remote.access.SignInTracker
 import com.homelab.app.domain.model.PiHoleAuthMode
+import com.homelab.app.domain.model.SignInRequiredException
 import com.homelab.app.util.ServiceType
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -23,8 +29,11 @@ class AuthInterceptor @Inject constructor(
     private val dockhandRepository: dagger.Lazy<DockhandRepository>,
     private val maltrailRepository: dagger.Lazy<MaltrailRepository>,
     private val nginxProxyManagerRepository: dagger.Lazy<NginxProxyManagerRepository>,
-    private val proxmoxRepository: dagger.Lazy<ProxmoxRepository>
+    private val proxmoxRepository: dagger.Lazy<ProxmoxRepository>,
+    private val signInTracker: SignInTracker
 ) : Interceptor {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun intercept(chain: Interceptor.Chain): Response {
         var request = chain.request()
 
@@ -79,39 +88,28 @@ class AuthInterceptor @Inject constructor(
         request = requestBuilder.build()
         var response = chain.proceed(request)
 
-        // Auto-retry for Beszel on auth failure (401 or 400 for PocketBase)
+        // Beszel: sign in again, or renew an OAuth session that has no password.
         if (effectiveInstance != null &&
             effectiveInstance.type == ServiceType.BESZEL &&
-            shouldAttemptBeszelReauth(response) &&
             bypassHeader != "true" &&
-            !effectiveInstance.username.isNullOrBlank() &&
-            !effectiveInstance.password.isNullOrBlank()
+            shouldAttemptBeszelReauth(response)
         ) {
             val newToken = try {
-                runBlocking {
-                    beszelRepository.get().refreshStoredToken(effectiveInstance.id)
-                }
+                runBlocking { beszelRepository.get().renewSession(effectiveInstance.id) }
             } catch (_: Exception) { null }
 
             if (newToken != null) {
-                // Retry with new token
                 response.close()
                 val retryBuilder = request.newBuilder()
                     .removeHeader("Authorization")
                     .addHeader("Authorization", "Bearer $newToken")
-                response = chain.proceed(retryBuilder.build())
-
-                return response
+                return chain.proceed(retryBuilder.build())
             }
-        }
-
-        if (effectiveInstance != null &&
-            effectiveInstance.type == ServiceType.BESZEL &&
-            shouldAttemptBeszelReauth(response) &&
-            bypassHeader != "true" &&
-            instanceIdHeader != null
-        ) {
-            globalEventBus.emitAuthError(instanceIdHeader)
+            if (signInTracker.isRejected(effectiveInstance.id, effectiveInstance.token)) {
+                response.close()
+                throw SignInRequiredException()
+            }
+            globalEventBus.emitAuthError(effectiveInstance.id)
         }
 
         // Auto-retry for Nginx Proxy Manager on token expiration/auth failure.
@@ -123,21 +121,10 @@ class AuthInterceptor @Inject constructor(
             shouldAttemptNpmReauth(response)
         ) {
             val newToken = try {
-                runBlocking {
-                    nginxProxyManagerRepository.get().authenticate(
-                        effectiveInstance.url,
-                        effectiveInstance.username.orEmpty(),
-                        effectiveInstance.password.orEmpty(),
-                        allowSelfSigned = effectiveInstance.allowSelfSigned
-                    )
-                }
+                runBlocking { nginxProxyManagerRepository.get().renewSession(effectiveInstance) }
             } catch (_: Exception) { null }
 
             if (newToken != null) {
-                runBlocking {
-                    serviceInstancesRepository.saveInstance(effectiveInstance.copy(token = newToken))
-                }
-
                 response.close()
                 val retryBuilder = request.newBuilder()
                     .removeHeader("Authorization")
@@ -145,6 +132,10 @@ class AuthInterceptor @Inject constructor(
                     .addHeader("Authorization", "Bearer $newToken")
                     .addHeader("Cookie", "token=$newToken")
                 return chain.proceed(retryBuilder.build())
+            }
+            if (signInTracker.isRejected(effectiveInstance.id, effectiveInstance.token)) {
+                response.close()
+                throw SignInRequiredException()
             }
         }
 
@@ -245,7 +236,6 @@ class AuthInterceptor @Inject constructor(
                             url = effectiveInstance.url,
                             username = effectiveInstance.username.orEmpty(),
                             password = effectiveInstance.password.orEmpty(),
-                            otp = effectiveInstance.proxmoxOtp,
                             allowSelfSigned = effectiveInstance.allowSelfSigned
                         )
                     } else {
@@ -279,6 +269,10 @@ class AuthInterceptor @Inject constructor(
             }
         }
 
+        if (response.isSuccessful && effectiveInstance != null && bypassHeader != "true") {
+            renewInBackground(effectiveInstance)
+        }
+
         if (response.code == 401 &&
             bypassHeader != "true" &&
             effectiveInstance != null &&
@@ -291,6 +285,15 @@ class AuthInterceptor @Inject constructor(
         }
 
         return response
+    }
+
+    private fun renewInBackground(instance: com.homelab.app.domain.model.ServiceInstance) {
+        when (instance.type) {
+            ServiceType.BESZEL -> scope.launch { runCatching { beszelRepository.get().renewIfAging(instance) } }
+            ServiceType.NGINX_PROXY_MANAGER ->
+                scope.launch { runCatching { nginxProxyManagerRepository.get().renewIfAging(instance) } }
+            else -> {}
+        }
     }
 
     private fun shouldAttemptNpmReauth(response: Response): Boolean {

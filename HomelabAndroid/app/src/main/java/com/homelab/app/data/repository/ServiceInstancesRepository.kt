@@ -139,14 +139,17 @@ class ServiceInstancesRepository @Inject constructor(
             if (
                 normalizedType == entity.type &&
                 normalizedUrl == entity.url &&
-                normalizedFallback == entity.fallbackUrl
+                normalizedFallback == entity.fallbackUrl &&
+                entity.proxmoxOtp == null
             ) {
                 entity
             } else {
                 entity.copy(
                     type = normalizedType,
                     url = normalizedUrl,
-                    fallbackUrl = normalizedFallback
+                    fallbackUrl = normalizedFallback,
+                    // One-time codes are of no use later and are no longer kept.
+                    proxmoxOtp = null
                 )
             }
         }
@@ -178,7 +181,6 @@ private fun ServiceInstanceEntity.toDomain(): ServiceInstance {
         url = url,
         token = token,
         proxmoxCsrfToken = proxmoxCsrfToken,
-        proxmoxOtp = proxmoxOtp,
         username = username,
         apiKey = apiKey,
         piholePassword = piholePassword,
@@ -197,7 +199,6 @@ private fun ServiceInstance.toEntity(): ServiceInstanceEntity {
         url = url,
         token = token,
         proxmoxCsrfToken = proxmoxCsrfToken,
-        proxmoxOtp = proxmoxOtp,
         username = username,
         apiKey = apiKey,
         piholePassword = piholePassword,

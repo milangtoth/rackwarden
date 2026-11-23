@@ -21,6 +21,8 @@ import com.homelab.app.data.repository.PlexRepository
 import com.homelab.app.data.repository.ProxmoxRepository
 import com.homelab.app.data.repository.PterodactylRepository
 import com.homelab.app.data.repository.CalagopusRepository
+import com.homelab.app.data.repository.DockgeRepository
+import com.homelab.app.data.repository.ScrutinyRepository
 import com.homelab.app.data.repository.AdGuardHomeRepository
 import com.homelab.app.data.repository.PiholeRepository
 import com.homelab.app.data.repository.PortainerRepository
@@ -28,6 +30,7 @@ import com.homelab.app.data.repository.ServicesRepository
 import com.homelab.app.data.repository.TechnitiumRepository
 import com.homelab.app.data.repository.TrueNasRepository
 import com.homelab.app.data.repository.UptimeKumaRepository
+import com.homelab.app.domain.model.OriginAccess
 import com.homelab.app.domain.model.ServiceInstance
 import com.homelab.app.util.ServiceType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -74,6 +77,8 @@ class HomeViewModel @Inject constructor(
     private val wakapiRepository: com.homelab.app.data.repository.WakapiRepository,
     private val pterodactylRepository: PterodactylRepository,
     private val calagopusRepository: CalagopusRepository,
+    private val scrutinyRepository: ScrutinyRepository,
+    private val dockgeRepository: DockgeRepository,
     private val localPreferencesRepository: LocalPreferencesRepository
 ) : ViewModel() {
 
@@ -82,6 +87,13 @@ class HomeViewModel @Inject constructor(
 
     val reachability: StateFlow<Map<String, Boolean?>> = servicesRepository.reachability
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val signInNeeds: StateFlow<Map<String, ServicesRepository.SignInNeed>> = servicesRepository.signInNeeds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    fun renewProxySession(instanceId: String, access: OriginAccess?) {
+        viewModelScope.launch { servicesRepository.renewProxySession(instanceId, access) }
+    }
 
     val pinging: StateFlow<Map<String, Boolean>> = servicesRepository.pinging
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
@@ -383,6 +395,14 @@ class HomeViewModel @Inject constructor(
                 val servers = calagopusRepository.getServers(instanceId)
                 val running = countRunningCalagopusServers(instanceId, servers)
                 InstanceSummary("$running", "/ ${servers.size}", "calagopus_running_servers")
+            }
+            ServiceType.SCRUTINY -> {
+                val overview = scrutinyRepository.getOverview(instanceId)
+                InstanceSummary("${overview.healthyCount}", "/ ${overview.active.size}", "scrutiny_healthy_drives")
+            }
+            ServiceType.DOCKGE -> {
+                val overview = dockgeRepository.getOverview(instanceId)
+                InstanceSummary("${overview.runningCount}", "/ ${overview.stacks.size}", "dockge_running_stacks")
             }
             else -> null
         }

@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -133,22 +134,13 @@ private fun WelcomeScreen(
     ) {
         Spacer(modifier = Modifier.weight(0.3f))
 
-        Surface(
-            modifier = Modifier.size(120.dp),
-            shape = CircleShape,
-            color = palette.iconFill,
-            border = androidx.compose.foundation.BorderStroke(1.dp, palette.iconStroke),
-            shadowElevation = 0.dp
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Default.Home,
-                    contentDescription = stringResource(R.string.onboarding_welcome),
-                    modifier = Modifier.size(64.dp),
-                    tint = palette.accent
-                )
-            }
-        }
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(R.drawable.ic_launcher_preview_default),
+            contentDescription = null,
+            modifier = Modifier
+                .size(132.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(30.dp))
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 

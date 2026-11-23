@@ -693,6 +693,55 @@ fun SettingsScreen(
                 }
             }
 
+            // --- FORWARD AUTH ---
+            item {
+                val shared by viewModel.sharesForwardAuth.collectAsStateWithLifecycle()
+                val signingOut by viewModel.isSigningOutOfProxies.collectAsStateWithLifecycle()
+                var confirms by remember { mutableStateOf(false) }
+                Text(
+                    text = stringResource(R.string.forward_auth_settings_title).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp, start = 8.dp)
+                )
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    tonalElevation = 1.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        // Older WebViews have one store for the whole app and can only share.
+                        if (viewModel.canSeparateForwardAuth) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(stringResource(R.string.forward_auth_share), style = MaterialTheme.typography.bodyMedium)
+                                    Text(
+                                        stringResource(R.string.forward_auth_share_desc),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                androidx.compose.material3.Switch(
+                                    checked = shared, onCheckedChange = { viewModel.setSharesForwardAuth(it) }
+                                )
+                            }
+                        }
+                        TextButton(enabled = !signingOut, onClick = { confirms = true }) {
+                            Text(stringResource(R.string.forward_auth_sign_out_all), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                if (confirms) {
+                    com.homelab.app.ui.forwardauth.Confirmation(
+                        R.string.forward_auth_sign_out_all, R.string.forward_auth_sign_out_all_message,
+                        R.string.forward_auth_sign_out_all,
+                        onConfirm = { viewModel.signOutOfAllProxies() }, onClose = { confirms = false }
+                    )
+                }
+            }
+
             // --- BACKUP ---
             item {
                 Text(
@@ -761,6 +810,7 @@ fun SettingsScreen(
                     ContactChip(
                         label = stringResource(R.string.settings_contact_repository),
                         iconUrl = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/github.png",
+                        tintIcon = true,
                         onClick = { uriHandler.openUri("https://github.com/milangtoth/Rackwarden") },
                         modifier = Modifier.weight(1f)
                     )
@@ -937,7 +987,9 @@ private fun ContactChip(
     label: String,
     iconUrl: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** For single-color logos, so they stay visible in dark mode. */
+    tintIcon: Boolean = false
 ) {
     Surface(
         onClick = onClick,
@@ -958,6 +1010,11 @@ private fun ContactChip(
                 model = iconUrl,
                 contentDescription = label,
                 contentScale = ContentScale.Fit,
+                colorFilter = if (tintIcon) {
+                    androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.onSurface)
+                } else {
+                    null
+                },
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))

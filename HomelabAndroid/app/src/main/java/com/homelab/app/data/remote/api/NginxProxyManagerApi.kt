@@ -32,6 +32,17 @@ interface NginxProxyManagerApi {
         @Body credentials: Map<String, String>
     ): retrofit2.Response<NpmTokenResult>
 
+    @GET
+    suspend fun renewToken(
+        @Url url: String,
+        @Header("X-Homelab-Service") service: String = "NginxProxyManager",
+        @Header("X-Homelab-Bypass") bypass: String = "true",
+        @Header("X-Homelab-Instance-Id") instanceId: String,
+        @Header("X-Homelab-Allow-Self-Signed") allowSelfSigned: String,
+        @Header("Authorization") authorization: String,
+        @Header("Cookie") cookie: String
+    ): retrofit2.Response<NpmTokenResult>
+
     @GET("api/")
     suspend fun health(
         @Header("X-Homelab-Service") service: String = "NginxProxyManager",

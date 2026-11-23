@@ -33,6 +33,22 @@ import com.homelab.app.data.repository.WakapiRepository
 import com.homelab.app.data.repository.ProxmoxRepository
 import com.homelab.app.data.repository.PterodactylRepository
 import com.homelab.app.data.repository.CalagopusRepository
+import com.homelab.app.data.repository.DockgeLoginRequiredException
+import com.homelab.app.data.repository.DockgeRepository
+import com.homelab.app.data.repository.ScrutinyRepository
+import com.homelab.app.data.remote.access.AccessProfileStore
+import com.homelab.app.data.remote.access.ForwardAuth
+import com.homelab.app.data.remote.access.ForwardAuthProber
+import com.homelab.app.data.remote.access.ProxyOutcome
+import com.homelab.app.data.remote.dto.beszel.BeszelAuthMethods
+import com.homelab.app.data.remote.dto.beszel.OAuthCallback
+import com.homelab.app.domain.model.AccessMethod
+import com.homelab.app.domain.model.AccessOrigin
+import com.homelab.app.domain.model.OAuthException
+import com.homelab.app.domain.model.OriginAccess
+import com.homelab.app.domain.model.TwoFactorChallenge
+import com.homelab.app.domain.model.TwoFactorRequiredException
+import com.homelab.app.ui.forwardauth.ForwardAuthForm
 import com.homelab.app.domain.model.PiHoleAuthMode
 import com.homelab.app.domain.model.ServiceInstance
 import com.homelab.app.util.ErrorHandler
@@ -44,6 +60,8 @@ import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -77,7 +95,11 @@ class ServiceLoginViewModel @Inject constructor(
     private val proxmoxRepository: ProxmoxRepository,
     private val trueNasRepository: TrueNasRepository,
     private val pterodactylRepository: PterodactylRepository,
-    private val calagopusRepository: CalagopusRepository
+    private val calagopusRepository: CalagopusRepository,
+    private val scrutinyRepository: ScrutinyRepository,
+    private val dockgeRepository: DockgeRepository,
+    private val accessProfileStore: AccessProfileStore,
+    private val forwardAuthProber: ForwardAuthProber
 ) : ViewModel() {
 
     private val existingInstanceId: String? = savedStateHandle["instanceId"]
@@ -91,12 +113,256 @@ class ServiceLoginViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    /** Also the ID of a new instance, so its browser session is kept when it is saved. */
+    val draftId: String = existingInstanceId?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+    val forwardAuth = ForwardAuthForm()
+
+    private val _saved = MutableStateFlow(false)
+    val saved: StateFlow<Boolean> = _saved
+
+    private val _twoFactorPrompt = MutableStateFlow<TwoFactorPrompt?>(null)
+    val twoFactorPrompt: StateFlow<TwoFactorPrompt?> = _twoFactorPrompt
+
+    private val _offersForwardAuth = MutableStateFlow(false)
+    val offersForwardAuth: StateFlow<Boolean> = _offersForwardAuth
+
+    private val _oauthMethods = MutableStateFlow<BeszelAuthMethods?>(null)
+    val oauthMethods: StateFlow<BeszelAuthMethods?> = _oauthMethods
+    private var oauthBaseUrl = ""
+
+    /** The sign-in page to open in the browser. */
+    private val _oauthPage = MutableStateFlow<String?>(null)
+    val oauthPage: StateFlow<String?> = _oauthPage
+
+    /** True while more than one provider has to be chosen from. */
+    private val _choosesProvider = MutableStateFlow(false)
+    val choosesProvider: StateFlow<Boolean> = _choosesProvider
+
+    private var lastUrls: List<String?> = emptyList()
+
     init {
+        forwardAuth.load(accessProfileStore.profile(draftId))
         if (!existingInstanceId.isNullOrBlank()) {
             viewModelScope.launch {
                 _existingInstance.value = serviceInstancesRepository.getInstance(existingInstanceId)
+                    ?.also { lastUrls = listOf(it.url, it.fallbackUrl) }
             }
         }
+    }
+
+    override fun onCleared() {
+        accessProfileStore.discardDraft(draftId)
+        OAuthReplies.cancel()
+        servicesRepository.removeWebDataUnlessUsed(draftId, lastUrls)
+    }
+
+    fun urlFor(raw: String): String? = cleanOptionalUrl(raw)
+
+    fun skipsNativeLogin(type: ServiceType): Boolean =
+        forwardAuth.isOn && forwardAuth.skipsNativeLogin && ForwardAuth.canSkipNativeLogin(type)
+
+    /** Test logins use the entered proxy credentials before anything is saved. */
+    private fun applyDraft(type: ServiceType, url: String, fallbackUrl: String?, allowSelfSigned: Boolean) {
+        val urls = listOf(url, fallbackUrl)
+        lastUrls = urls
+        if (!forwardAuth.isOn) {
+            accessProfileStore.setDraft(draftId, null, urls)
+            return
+        }
+        if (forwardAuth.method == AccessMethod.HEADERS) {
+            forwardAuth.firstInvalidHeader(type)?.let {
+                throw IllegalArgumentException(context.getString(R.string.forward_auth_header_invalid, it.name))
+            }
+        }
+        val profile = forwardAuth.profile(AccessOrigin.from(url), AccessOrigin.from(fallbackUrl), allowSelfSigned)
+            ?: throw IllegalArgumentException(context.getString(R.string.forward_auth_connect_first))
+        accessProfileStore.setDraft(
+            draftId,
+            profile.copy(usesNativeLogin = profile.usesNativeLogin || !ForwardAuth.canSkipNativeLogin(type)),
+            urls
+        )
+    }
+
+    suspend fun testHeaders(url: String, allowSelfSigned: Boolean): ProxyOutcome {
+        val origin = AccessOrigin.from(url) ?: return ProxyOutcome.BLOCKED
+        return forwardAuthProber.probe(
+            url, OriginAccess(origin, headers = forwardAuth.headers), forwardAuth.allowsInsecure, allowSelfSigned
+        )
+    }
+
+    fun signOutOfProxy() {
+        forwardAuth.signOut()
+        viewModelScope.launch {
+            if (_existingInstance.value != null) servicesRepository.signOutOfProxy(draftId)
+            else servicesRepository.removeWebDataUnlessUsed(draftId, lastUrls)
+        }
+    }
+
+    private suspend fun promptForCode(
+        challenge: TwoFactorChallenge,
+        resend: (suspend (TwoFactorChallenge) -> TwoFactorChallenge)? = null,
+        verify: suspend (TwoFactorChallenge, String) -> String
+    ): String {
+        val prompt = TwoFactorPrompt(challenge, resend, verify)
+        _twoFactorPrompt.value = prompt
+        try {
+            return prompt.result.await()
+        } finally {
+            _twoFactorPrompt.value = null
+        }
+    }
+
+    private suspend fun promptForBeszelCode(challenge: TwoFactorChallenge, allowSelfSigned: Boolean): String =
+        promptForCode(
+            beszelRepository.requestTwoFactorCode(challenge, allowSelfSigned),
+            resend = { beszelRepository.requestTwoFactorCode(it, allowSelfSigned) },
+            verify = { current, code -> beszelRepository.completeTwoFactor(current, code, allowSelfSigned) }
+        )
+
+    /** Runs a login and saves what it returns. A closed prompt or sign-in page is not an error. */
+    private fun save(url: String, allowSelfSigned: Boolean, build: suspend () -> ServiceInstance) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                val instance = build()
+                accessProfileStore.commitDraft(draftId, instance)
+                servicesRepository.saveInstance(instance)
+                _existingInstance.value = instance
+                _saved.value = true
+            } catch (cancelled: CancellationException) {
+                ensureActive()
+            } catch (error: Exception) {
+                report(error, url, allowSelfSigned)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    private suspend fun report(error: Exception, url: String, allowSelfSigned: Boolean) {
+        _error.value = ErrorHandler.getMessage(context, error)
+        if (!forwardAuth.isOn) {
+            _offersForwardAuth.value = forwardAuthProber.isProtected(url, allowSelfSigned)
+        }
+    }
+
+    // MARK: - OAuth
+
+    /** Asks the server which providers it has; a single one is used right away. */
+    fun loadOAuthProviders(label: String, url: String, fallbackUrl: String, email: String, allowSelfSigned: Boolean) {
+        val cleanUrl = cleanOptionalUrl(url) ?: return
+        val cleanFallback = cleanOptionalUrl(fallbackUrl)
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            var single: BeszelAuthMethods.Provider? = null
+            try {
+                applyDraft(ServiceType.BESZEL, cleanUrl, cleanFallback, allowSelfSigned)
+                val (base, methods) = beszelRepository.authMethods(cleanUrl, cleanFallback, allowSelfSigned)
+                oauthBaseUrl = base
+                _oauthMethods.value = methods
+                when (methods.providers.size) {
+                    0 -> throw OAuthException(R.string.oauth_unavailable)
+                    1 -> single = methods.providers.first()
+                    else -> _choosesProvider.value = true
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                report(error, cleanUrl, allowSelfSigned)
+            } finally {
+                _isLoading.value = false
+            }
+            single?.let { signInWithOAuth(it, label, url, fallbackUrl, email, allowSelfSigned) }
+        }
+    }
+
+    fun cancelProviderChoice() {
+        _choosesProvider.value = false
+    }
+
+    fun signInWithOAuth(
+        provider: BeszelAuthMethods.Provider,
+        label: String, url: String, fallbackUrl: String, email: String, allowSelfSigned: Boolean
+    ) {
+        _choosesProvider.value = false
+        val cleanUrl = cleanOptionalUrl(url) ?: return
+        val cleanFallback = cleanOptionalUrl(fallbackUrl)
+        save(cleanUrl, allowSelfSigned) {
+            // The address may have changed since the providers were loaded.
+            if (oauthBaseUrl !in listOf(cleanUrl, cleanFallback)) throw OAuthException(R.string.oauth_invalid_reply)
+            applyDraft(ServiceType.BESZEL, cleanUrl, cleanFallback, allowSelfSigned)
+            val page = provider.signInUrl()
+            val reply = OAuthReplies.expect()
+            _oauthPage.value = page
+            val code = try {
+                OAuthCallback.code(reply.await(), provider.state)
+            } finally {
+                _oauthPage.value = null
+            }
+            val typed = email.trim().ifBlank { null }
+            var account = typed
+            val token = try {
+                val session = beszelRepository.completeOAuth(provider, code, oauthBaseUrl, typed, allowSelfSigned)
+                account = session.record?.email?.ifBlank { null } ?: typed
+                session.token
+            } catch (required: TwoFactorRequiredException) {
+                promptForBeszelCode(required.challenge, allowSelfSigned)
+            }
+            ServiceInstance(
+                id = draftId,
+                type = ServiceType.BESZEL,
+                label = label.trim().ifBlank { ServiceType.BESZEL.displayName },
+                url = cleanUrl,
+                token = token,
+                username = account,
+                fallbackUrl = cleanFallback,
+                allowSelfSigned = allowSelfSigned
+            )
+        }
+    }
+
+    /** The user came back without finishing. */
+    fun cancelOAuth() = OAuthReplies.cancel()
+
+    /** Checks that the service's API really answers with the proxy credentials alone. */
+    private suspend fun buildWithoutLogin(
+        type: ServiceType, label: String, url: String, fallbackUrl: String?, allowSelfSigned: Boolean
+    ): ServiceInstance {
+        try {
+            when (type) {
+                ServiceType.ADGUARD_HOME -> adGuardHomeRepository.authenticate(url, "", "", allowSelfSigned = allowSelfSigned)
+                ServiceType.QBITTORRENT -> mediaArrRepository.checkQbittorrentWithoutLogin(url, allowSelfSigned)
+                ServiceType.MALTRAIL -> maltrailRepository.authenticate(
+                    url = url, username = null, password = null, fallbackUrl = fallbackUrl, allowSelfSigned = allowSelfSigned
+                )
+                ServiceType.UPTIME_KUMA -> uptimeKumaRepository.authenticate(
+                    url = url, username = null, passwordOrApiKey = null, fallbackUrl = fallbackUrl, allowSelfSigned = allowSelfSigned
+                )
+                ServiceType.GLUETUN, ServiceType.FLARESOLVERR -> mediaArrRepository.authenticateWithApiKey(
+                    url = url, serviceType = type, apiKey = "", fallbackUrl = fallbackUrl, allowSelfSigned = allowSelfSigned
+                )
+                ServiceType.SCRUTINY -> scrutinyRepository.validate(url, fallbackUrl, allowSelfSigned)
+                ServiceType.DOCKGE -> dockgeRepository.validate(url, fallbackUrl, "", allowSelfSigned)
+                else -> throw IllegalArgumentException(context.getString(R.string.error_unknown))
+            }
+        } catch (_: DockgeLoginRequiredException) {
+            throw IllegalArgumentException(context.getString(R.string.forward_auth_needs_login))
+        } catch (error: retrofit2.HttpException) {
+            if (error.code() in setOf(401, 403)) {
+                throw IllegalArgumentException(context.getString(R.string.forward_auth_needs_login))
+            }
+            throw error
+        } catch (error: IllegalStateException) {
+            if (Regex("\\b(401|403)\\b").containsMatchIn(error.message.orEmpty())) {
+                throw IllegalArgumentException(context.getString(R.string.forward_auth_needs_login))
+            }
+            throw error
+        }
+        return ServiceInstance(
+            id = draftId, type = type, label = label, url = url, fallbackUrl = fallbackUrl, allowSelfSigned = allowSelfSigned
+        )
     }
 
     fun saveInstance(
@@ -113,12 +379,14 @@ class ServiceLoginViewModel @Inject constructor(
         proxmoxOtp: String = "",
         proxmoxUseApiToken: Boolean = false
     ) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
+        val requestedUrl = cleanOptionalUrl(url)
+        if (requestedUrl == null) {
+            _error.value = context.getString(R.string.login_error_url_required)
+            return
+        }
+        save(requestedUrl, allowSelfSigned) {
             val existing = _existingInstance.value
-            val instanceId = existing?.id ?: UUID.randomUUID().toString()
+            val instanceId = draftId
             val normalizedLabel = label.trim().ifBlank { serviceType.displayName }
             val cleanUrl = cleanUrl(url)
             val cleanFallbackUrl = cleanOptionalUrl(fallbackUrl)
@@ -135,15 +403,21 @@ class ServiceLoginViewModel @Inject constructor(
                 else -> trimmedUsername
             }
 
-            try {
+            applyDraft(serviceType, cleanUrl, cleanFallbackUrl, allowSelfSigned)
+            if (skipsNativeLogin(serviceType)) {
+                buildWithoutLogin(serviceType, normalizedLabel, cleanUrl, cleanFallbackUrl, allowSelfSigned)
+            } else {
+                // Going back to the service's own login has to be tested like a new one.
+                val hadNoLogin = existing != null && accessProfileStore.profile(existing.id)?.usesNativeLogin == false
                 val metadataOnly = existing != null &&
+                    !hadNoLogin &&
                     existing.url == cleanUrl &&
                     existing.username.orEmpty() == normalizedStoredUsername &&
                     existing.apiKey.orEmpty() == trimmedApiKey &&
                     existing.piHoleStoredSecret.orEmpty() == trimmedPassword &&
                     existing.allowSelfSigned == allowSelfSigned
 
-                val instance = if (metadataOnly) {
+                if (metadataOnly) {
                     existing.copy(
                         label = normalizedLabel,
                         fallbackUrl = cleanFallbackUrl,
@@ -209,13 +483,17 @@ class ServiceLoginViewModel @Inject constructor(
                                 throw IllegalArgumentException(context.getString(R.string.login_error_password_required))
                             }
                             require(authPassword.isNotBlank()) { context.getString(R.string.login_error_password_required) }
-                            val token = beszelRepository.authenticate(
-                                url = cleanUrl,
-                                email = trimmedUsername,
-                                password = authPassword,
-                                fallbackUrl = cleanFallbackUrl,
-                                allowSelfSigned = allowSelfSigned
-                            )
+                            val token = try {
+                                beszelRepository.authenticate(
+                                    url = cleanUrl,
+                                    email = trimmedUsername,
+                                    password = authPassword,
+                                    fallbackUrl = cleanFallbackUrl,
+                                    allowSelfSigned = allowSelfSigned
+                                )
+                            } catch (required: TwoFactorRequiredException) {
+                                promptForBeszelCode(required.challenge, allowSelfSigned)
+                            }
                             ServiceInstance(
                                 id = instanceId,
                                 type = serviceType,
@@ -257,7 +535,16 @@ class ServiceLoginViewModel @Inject constructor(
                                 throw IllegalArgumentException(context.getString(R.string.login_error_password_required))
                             }
                             require(authPassword.isNotBlank()) { context.getString(R.string.login_error_password_required) }
-                            val token = nginxProxyManagerRepository.authenticate(cleanUrl, trimmedUsername, authPassword, allowSelfSigned = allowSelfSigned)
+                            val token = try {
+                                nginxProxyManagerRepository.authenticate(cleanUrl, trimmedUsername, authPassword, allowSelfSigned = allowSelfSigned)
+                            } catch (required: TwoFactorRequiredException) {
+                                promptForCode(
+                                    required.challenge,
+                                    verify = { current, code ->
+                                        nginxProxyManagerRepository.completeTwoFactor(current, code, allowSelfSigned)
+                                    }
+                                )
+                            }
                             ServiceInstance(
                                 id = instanceId,
                                 type = serviceType,
@@ -620,7 +907,6 @@ class ServiceLoginViewModel @Inject constructor(
                                     url = cleanUrl,
                                     token = authTicket.ticket,
                                     proxmoxCsrfToken = authTicket.csrfPreventionToken,
-                                    proxmoxOtp = proxmoxOtp.ifBlank { null },
                                     username = authTicket.username,
                                     password = resolvedPassword,
                                     fallbackUrl = cleanFallbackUrl
@@ -731,6 +1017,56 @@ class ServiceLoginViewModel @Inject constructor(
                                 fallbackUrl = cleanFallbackUrl
                             )
                         }
+                        ServiceType.SCRUTINY -> {
+                            // Scrutiny has no login of its own.
+                            scrutinyRepository.validate(cleanUrl, cleanFallbackUrl, allowSelfSigned)
+                            ServiceInstance(
+                                id = instanceId,
+                                type = serviceType,
+                                label = normalizedLabel,
+                                url = cleanUrl,
+                                fallbackUrl = cleanFallbackUrl
+                            )
+                        }
+                        ServiceType.DOCKGE -> {
+                            val token = when {
+                                trimmedPassword.isNotBlank() -> {
+                                    require(trimmedUsername.isNotBlank()) { context.getString(R.string.login_error_username_required) }
+                                    try {
+                                        dockgeRepository.login(cleanUrl, cleanFallbackUrl, trimmedUsername, trimmedPassword, allowSelfSigned)
+                                    } catch (required: TwoFactorRequiredException) {
+                                        promptForCode(
+                                            required.challenge,
+                                            verify = { _, code ->
+                                                dockgeRepository.login(
+                                                    cleanUrl, cleanFallbackUrl, trimmedUsername, trimmedPassword, allowSelfSigned, code
+                                                )
+                                            }
+                                        )
+                                    }
+                                }
+                                existing != null && existing.token.isNotBlank() -> {
+                                    require(existing.url == cleanUrl) { context.getString(R.string.login_error_password_required) }
+                                    existing.token
+                                }
+                                else -> ""
+                            }
+                            try {
+                                dockgeRepository.validate(cleanUrl, cleanFallbackUrl, token, allowSelfSigned)
+                            } catch (_: DockgeLoginRequiredException) {
+                                throw IllegalArgumentException(context.getString(R.string.login_error_password_required))
+                            }
+                            // The session does not expire, so the password is not kept.
+                            ServiceInstance(
+                                id = instanceId,
+                                type = serviceType,
+                                label = normalizedLabel,
+                                url = cleanUrl,
+                                token = token,
+                                username = trimmedUsername.ifBlank { null },
+                                fallbackUrl = cleanFallbackUrl
+                            )
+                        }
                         ServiceType.CALAGOPUS -> {
                             require(trimmedApiKey.isNotBlank()) { context.getString(R.string.login_error_api_key_required) }
                             calagopusRepository.authenticate(
@@ -750,13 +1086,6 @@ class ServiceLoginViewModel @Inject constructor(
                         }
                     }
                 }.copy(allowSelfSigned = allowSelfSigned)
-
-                servicesRepository.saveInstance(instance)
-                _existingInstance.value = instance
-            } catch (error: Exception) {
-                _error.value = ErrorHandler.getMessage(context, error)
-            } finally {
-                _isLoading.value = false
             }
         }
     }

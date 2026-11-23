@@ -42,7 +42,7 @@ class AuthInterceptorTest {
         every { npmRepo.get() } returns mockk()
         val proxmoxRepo = mockk<dagger.Lazy<ProxmoxRepository>>()
         every { proxmoxRepo.get() } returns mockk()
-        return Triple(AuthInterceptor(eventBus, instancesRepository, beszelRepo, dockhandRepo, maltrailRepo, npmRepo, proxmoxRepo), eventBus, instancesRepository)
+        return Triple(AuthInterceptor(eventBus, instancesRepository, beszelRepo, dockhandRepo, maltrailRepo, npmRepo, proxmoxRepo, com.homelab.app.data.remote.access.SignInTracker()), eventBus, instancesRepository)
     }
 
     @Test
@@ -192,7 +192,7 @@ class AuthInterceptorTest {
             username = "admin@example.com",
             password = "secret"
         )
-        coEvery { beszelRepository.refreshStoredToken("instance-beszel") } returns "fresh-token"
+        coEvery { beszelRepository.renewSession("instance-beszel", any()) } returns "fresh-token"
         every { chain.request() } returns request
         every { chain.proceed(any()) } answers {
             val req = invocation.args[0] as Request

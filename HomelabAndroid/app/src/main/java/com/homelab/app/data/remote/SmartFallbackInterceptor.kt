@@ -11,6 +11,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.Response
 import com.homelab.app.data.local.SettingsManager
+import com.homelab.app.data.remote.access.ForwardAuthRequiredException
 import com.homelab.app.data.repository.ServiceInstancesRepository
 import java.io.IOException
 import javax.inject.Inject
@@ -80,7 +81,7 @@ class SmartFallbackInterceptor @Inject constructor(
             // HtmlResponseException means the server responded with an HTML page (e.g. a proxy
             // login page). This is an application-level error, not a network-level failure — do
             // NOT retry with the fallback URL, just propagate the error immediately.
-            if (e is HtmlResponseException) throw e
+            if (e is HtmlResponseException || e is ForwardAuthRequiredException) throw e
             if (isConnectedToHomeWifi && fallbackUrl != null) {
                 if (primaryUrl != null) {
                     val fbUrl = rewriteUrl(

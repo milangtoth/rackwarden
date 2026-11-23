@@ -18,7 +18,7 @@ class AdGuardHomeRepository @Inject constructor(
         val token = java.util.Base64.getEncoder().encodeToString(creds.toByteArray(Charsets.UTF_8))
         api.authenticate(
             url = cleanUrl,
-            authorization = "Basic $token",
+            authorization = "Basic $token".takeIf { creds != ":" },
             allowSelfSigned = allowSelfSigned.toString()
         )
         return token

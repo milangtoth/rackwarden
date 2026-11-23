@@ -4,6 +4,8 @@ import com.homelab.app.data.local.SettingsManager
 import com.homelab.app.data.local.dao.ServiceInstanceDao
 import com.homelab.app.data.local.entity.ServiceInstanceEntity
 import com.homelab.app.data.remote.TlsClientSelector
+import com.homelab.app.data.remote.access.AccessProfileStore
+import com.homelab.app.data.remote.access.SignInTracker
 import com.homelab.app.domain.model.ServiceConnection
 import com.homelab.app.domain.model.ServiceInstance
 import com.homelab.app.util.GlobalEventBus
@@ -41,7 +43,10 @@ class ServicesRepositoryTest {
         val repository = ServicesRepository(
             serviceInstancesRepository = instanceRepository,
             tlsClientSelector = tlsClientSelector,
-            globalEventBus = GlobalEventBus()
+            globalEventBus = GlobalEventBus(),
+            accessProfileStore = AccessProfileStore(mockk(relaxed = true)),
+            signInTracker = SignInTracker(),
+            webData = mockk(relaxed = true)
         )
         val first = ServiceInstance(
             id = "instance-1",
@@ -92,7 +97,10 @@ class ServicesRepositoryTest {
         val repository = ServicesRepository(
             serviceInstancesRepository = instanceRepository,
             tlsClientSelector = tlsClientSelector,
-            globalEventBus = GlobalEventBus()
+            globalEventBus = GlobalEventBus(),
+            accessProfileStore = AccessProfileStore(mockk(relaxed = true)),
+            signInTracker = SignInTracker(),
+            webData = mockk(relaxed = true)
         )
         val instance = ServiceInstance(
             id = "instance-radarr",
@@ -134,7 +142,10 @@ class ServicesRepositoryTest {
         val repository = ServicesRepository(
             serviceInstancesRepository = instanceRepository,
             tlsClientSelector = tlsClientSelector,
-            globalEventBus = GlobalEventBus()
+            globalEventBus = GlobalEventBus(),
+            accessProfileStore = AccessProfileStore(mockk(relaxed = true)),
+            signInTracker = SignInTracker(),
+            webData = mockk(relaxed = true)
         )
         val instance = ServiceInstance(
             id = "instance-linux",

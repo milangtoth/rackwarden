@@ -78,7 +78,11 @@ import androidx.core.net.toUri
 import androidx.lifecycle.repeatOnLifecycle
 import com.homelab.app.R
 import com.homelab.app.domain.model.ServiceInstance
+import com.homelab.app.data.repository.ServicesRepository
+import com.homelab.app.ui.forwardauth.ForwardAuthDialog
+import com.homelab.app.ui.forwardauth.ForwardAuthTarget
 import com.homelab.app.ui.theme.StatusGreen
+import com.homelab.app.ui.theme.StatusOrange
 import com.homelab.app.ui.components.ServiceIcon
 import com.homelab.app.ui.theme.primaryColor
 import com.homelab.app.util.ServiceType
@@ -108,6 +112,8 @@ fun HomeScreen(
     val summaryLoadingIds by viewModel.summaryLoadingIds.collectAsStateWithLifecycle()
     val refreshingInstanceIds by viewModel.refreshingInstanceIds.collectAsStateWithLifecycle()
 
+    val signInNeeds by viewModel.signInNeeds.collectAsStateWithLifecycle()
+    var proxySignIn by remember { mutableStateOf<ForwardAuthTarget?>(null) }
     var showReorderDialog by rememberSaveable { mutableStateOf(false) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -174,45 +180,7 @@ fun HomeScreen(
             contentPadding = PaddingValues(bottom = 24.dp, top = 16.dp)
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-1).sp
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = CircleShape
-                        ) {
-                            Text(
-                                text = "$connectedCount",
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        FilledTonalIconButton(onClick = { showReorderDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Default.SwapVert,
-                                contentDescription = stringResource(R.string.home_reorder_services)
-                            )
-                        }
-                    }
-                }
+                LauncherHeader(stringResource(R.string.app_name), connectedCount) { showReorderDialog = true }
             }
 
             if (showVpnShortcut) {
@@ -242,7 +210,14 @@ fun HomeScreen(
                             summary = instanceSummaries[instance.id],
                             isSummaryLoading = summaryLoadingIds.contains(instance.id),
                             isRefreshing = refreshingInstanceIds.contains(instance.id),
-                            onOpen = { onNavigateToService(type, instance.id) },
+                            onOpen = {
+                                when (val need = signInNeeds[instance.id]) {
+                                    is ServicesRepository.SignInNeed.Proxy -> proxySignIn = need.target
+                                    ServicesRepository.SignInNeed.Service -> onNavigateToLogin(type, instance.id)
+                                    null -> onNavigateToService(type, instance.id)
+                                }
+                            },
+                            needsSignIn = instance.id in signInNeeds,
                             onRefresh = { viewModel.checkReachability(instance.id, force = true) }
                         )
                     }
@@ -261,6 +236,17 @@ fun HomeScreen(
         }
     }
 
+    proxySignIn?.let { target ->
+        ForwardAuthDialog(
+            target = target,
+            onFinish = {
+                proxySignIn = null
+                viewModel.renewProxySession(target.instanceId, it)
+            },
+            onDismiss = { proxySignIn = null }
+        )
+    }
+
     if (showReorderDialog) {
         ServiceOrderDialog(
             serviceOrder = serviceOrder.filter { it.isHomeService },
@@ -275,8 +261,10 @@ fun HomeScreen(
 
 
 
+internal val LauncherCardHeight = 168.dp
+
 @Composable
-private fun InstanceCard(
+internal fun InstanceCard(
     type: ServiceType,
     instance: ServiceInstance,
     isReachable: Boolean?,
@@ -285,7 +273,10 @@ private fun InstanceCard(
     isSummaryLoading: Boolean,
     isRefreshing: Boolean,
     onOpen: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    needsSignIn: Boolean = false,
+    /** A short second line under the name. */
+    detail: String? = null
 ) {
     val resolvedReachable = when {
         summary != null -> true
@@ -294,17 +285,17 @@ private fun InstanceCard(
         isSummaryLoading || isPinging || isRefreshing -> null
         else -> null
     }
-    val statusAccent = when (resolvedReachable) {
+    val statusAccent = if (needsSignIn) StatusOrange else when (resolvedReachable) {
         true -> StatusGreen
         false -> Color(0xFFEF5350)
         null -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val statusBackground = when (resolvedReachable) {
+    val statusBackground = if (needsSignIn) StatusOrange.copy(alpha = 0.15f) else when (resolvedReachable) {
         true -> StatusGreen.copy(alpha = 0.15f)
         false -> Color(0xFFEF5350).copy(alpha = 0.15f)
         null -> MaterialTheme.colorScheme.surfaceVariant
     }
-    val statusLabel = when (resolvedReachable) {
+    val statusLabel = if (needsSignIn) stringResource(R.string.status_needs_sign_in) else when (resolvedReachable) {
         true -> stringResource(R.string.home_status_online)
         false -> stringResource(R.string.home_status_offline)
         null -> stringResource(R.string.home_verifying)
@@ -337,6 +328,8 @@ private fun InstanceCard(
             "coded_today" -> stringResource(R.string.wakapi_coded_today)
             "proxmox_guests_running" -> stringResource(R.string.proxmox_guests_running)
             "truenas_healthy_pools" -> stringResource(R.string.truenas_healthy_pools)
+            "scrutiny_healthy_drives" -> stringResource(R.string.scrutiny_healthy_drives)
+            "dockge_running_stacks" -> stringResource(R.string.dockge_running_stacks)
             else -> s.label.lowercase()
         }
     }
@@ -349,6 +342,7 @@ private fun InstanceCard(
             Column(
                 modifier = Modifier
                     .clickable(onClick = onOpen)
+                    .heightIn(min = LauncherCardHeight)
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -451,6 +445,14 @@ private fun InstanceCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
+                Text(
+                    text = detail.orEmpty(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -486,10 +488,8 @@ private fun InstanceCard(
     }
 }
 
-private const val TAILSCALE_ICON_URL = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/tailscale.png"
-
 @Composable
-private fun ConnectInstanceCard(
+internal fun ConnectInstanceCard(
     type: ServiceType,
     onClick: () -> Unit
 ) {
@@ -500,6 +500,7 @@ private fun ConnectInstanceCard(
         Column(
             modifier = Modifier
                 .clickable(onClick = onClick)
+                .heightIn(min = LauncherCardHeight)
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -558,27 +559,7 @@ fun TailscaleCard(isConnected: Boolean) {
                 modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    SubcomposeAsyncImage(
-                        model = TAILSCALE_ICON_URL,
-                        contentDescription = stringResource(R.string.tailscale_open),
-                        modifier = Modifier.size(26.dp),
-                        contentScale = ContentScale.Fit,
-                        loading = {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 1.8.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        error = {
-                            Icon(
-                                Icons.Default.Security,
-                                contentDescription = stringResource(R.string.tailscale_open),
-                                tint = if (isConnected) StatusGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    )
+                    TailscaleLogo(Modifier.size(24.dp))
                 }
             }
 

@@ -1,6 +1,7 @@
 package com.homelab.app.domain.manager
 
 import com.homelab.app.BuildConfig
+import com.homelab.app.data.remote.access.AccessProfileStore
 import com.homelab.app.data.repository.ServiceInstancesRepository
 import com.homelab.app.domain.model.BackupEnvelope
 import com.homelab.app.domain.model.BackupServiceTypeMapper
@@ -20,7 +21,8 @@ import javax.inject.Singleton
 
 @Singleton
 class BackupManager @Inject constructor(
-    private val repository: ServiceInstancesRepository
+    private val repository: ServiceInstancesRepository,
+    private val accessProfileStore: AccessProfileStore
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -41,7 +43,7 @@ class BackupManager @Inject constructor(
 
         val entries = filteredInstances.map { instance ->
             val isPref = preferredIdsByType[instance.type] == instance.id
-            instance.toBackupEntry(isPreferred = isPref ?: false)
+            instance.toBackupEntry(isPreferred = isPref ?: false, accessProfile = accessProfileStore.profile(instance.id))
         }
 
         val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -87,7 +89,7 @@ class BackupManager @Inject constructor(
             .mapNotNull { entry ->
                 val instance = entry.toServiceInstance() ?: return@mapNotNull null
                 if (!selectedTypes.contains(instance.type)) return@mapNotNull null
-                instance to entry.isPreferred
+                Triple(instance, entry.isPreferred, entry.accessProfile)
             }
             .groupBy(keySelector = { it.first.type }, valueTransform = { it })
 
@@ -99,6 +101,7 @@ class BackupManager @Inject constructor(
         for (instance in existing) {
             if (typesToReplace.contains(instance.type)) {
                 repository.deleteInstance(instance.id)
+                accessProfileStore.set(null, instance.id)
             }
         }
 
@@ -107,7 +110,10 @@ class BackupManager @Inject constructor(
             val entriesForType = entriesByType[type].orEmpty()
             var preferredId: String? = null
 
-            for ((instance, isPreferred) in entriesForType) {
+            for ((instance, isPreferred, profile) in entriesForType) {
+                accessProfileStore.set(
+                    profile?.withoutCookies?.limitedTo(listOf(instance.url, instance.fallbackUrl)), instance.id
+                )
                 repository.saveInstance(instance)
                 importedCount += 1
                 if (isPreferred) {

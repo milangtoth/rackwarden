@@ -26,7 +26,7 @@ interface AdGuardHomeApi {
     @GET
     suspend fun authenticate(
         @Url url: String,
-        @Header("Authorization") authorization: String,
+        @Header("Authorization") authorization: String?,
         @Header("X-Homelab-Service") service: String = "AdGuardHome",
         @Header("X-Homelab-Bypass") bypass: String = "true",
         @Header("X-Homelab-Allow-Self-Signed") allowSelfSigned: String = "false"
