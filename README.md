@@ -203,6 +203,7 @@ See the [privacy policy](docs/privacy.html) for details.
 ## Development
 
 Build and test commands, branch conventions and release steps are in [AGENTS.md](AGENTS.md).
+What changed in each version is in the [changelog](CHANGELOG.md).
 
 <details>
 <summary><b>Project layout</b></summary>

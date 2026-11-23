@@ -1,36 +1,32 @@
 {
   "name": "Rackwarden",
-  "subtitle": "Monitor and manage your homelab",
-  "description": "A premium, fully native iOS app for monitoring and managing your personal Homelab ecosystem. Built with Swift 6 and SwiftUI, featuring the Liquid Glass design system.",
+  "subtitle": "Your homelab, guarded and organized.",
+  "description": "A native app to watch and manage your self-hosted services from one place, even when they sit behind a login proxy.",
   "iconURL": "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/app-icon.png",
   "website": "https://github.com/milangtoth/Rackwarden",
-  "tintColor": "#4A90D9",
+  "tintColor": "#12D6B3",
   "apps": [
     {
       "name": "Rackwarden",
       "bundleIdentifier": "com.milangtoth.rackwarden",
       "developerName": "milangtoth",
-      "subtitle": "Your homelab, in your pocket.",
-      "localizedDescription": "A premium, fully native iOS app for monitoring and managing your personal Homelab ecosystem.\n\nIntegrated services:\n• Portainer — Monitor Docker containers, CPU/Memory usage, Start/Stop/Restart\n• Pi-hole — Real-time query stats, blocked domains, toggle ad-blocking\n• Beszel — System monitor with CPU, Memory, Disk usage across nodes\n• Gitea — Browse repos, contribution heatmaps, syntax-highlighted code\n• Nginx Proxy Manager — Proxy hosts, redirections, SSL certificates\n• Tailscale — VPN connectivity status and quick launch\n• AdGuard Home — DNS query stats, filters, blocked services, rewrites\n• Healthcheck — Monitor uptime, response times, notifications\n• Patchmon — Track software updates and patches across your infrastructure\n• Jellystat — Monitor Jellyfin media server usage and playback stats\n• Bookmarks — Save and organize your homelab links\n\nFeatures:\n• Multi-instance support for all services\n• Cyberpunk visual mode for service cards\n• Multilingual: English, Italian, French, Spanish, German\n• Liquid Glass UI design\n• Face ID / biometric unlock",
+      "subtitle": "Your homelab, guarded and organized.",
+      "localizedDescription": "A native app to watch and manage your self-hosted services from one place, even when they sit behind a login proxy.\n\n• 36 services, including Portainer, Proxmox, TrueNAS, Beszel, Dockge, Scrutiny, Nginx Proxy Manager, Pi-hole, Plex and the Servarr stack\n• Several instances of each service, with fallback addresses\n• Forward auth, two-factor codes and OAuth sign-in for Beszel\n• Encrypted backups, PIN and biometric unlock\n• Bookmarks and a Tailscale shortcut\n• English, Italian, French, Spanish and German",
       "iconURL": "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/app-icon.png",
-      "tintColor": "#4A90D9",
+      "tintColor": "#12D6B3",
       "category": "utilities",
       "screenshots": [
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9186.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9187.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9193.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9190.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9199.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9275.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9238.PNG",
-        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/foto-ios/IMG_9200.jpg"
+        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/readme/welcome-dark.png",
+        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/readme/home-dark.png",
+        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/readme/servarr-dark.png",
+        "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/readme/settings-dark.png"
       ],
       "versions": [],
       "appPermissions": {
         "entitlements": [],
         "privacy": {
-          "NSFaceIDUsageDescription": "Homelab uses Face ID to quickly unlock the app.",
-          "NSLocalNetworkUsageDescription": "Homelab needs to access your local network to communicate with your self-hosted services."
+          "NSFaceIDUsageDescription": "Rackwarden uses Face ID to quickly unlock the app.",
+          "NSLocalNetworkUsageDescription": "Rackwarden needs to access your local network to communicate with your self-hosted services."
         }
       }
     }

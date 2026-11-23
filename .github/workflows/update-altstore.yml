@@ -108,7 +108,7 @@ jobs:
               identifier: $id,
               caption: $caption,
               date: $date,
-              tintColor: "#4A90D9",
+              tintColor: "#12D6B3",
               notify: true,
               url: $url,
               appID: "com.milangtoth.rackwarden"

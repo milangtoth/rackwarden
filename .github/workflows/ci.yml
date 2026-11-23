@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check iOS and Android versions match
+      - name: Check iOS and Android versions
         run: |
           python3 - <<'PY'
           import pathlib
@@ -46,11 +46,15 @@ jobs:
           android_version = version_name.group(1)
           android_build = version_code.group(1)
 
-          if ios_version != android_version or ios_build != android_build:
+          # Platforms can release separately, but a shared version must be the same build.
+          if not re.fullmatch(r"\d+\.\d+\.\d+", ios_version) or not ios_build.isdigit():
+              print(f"Invalid iOS version: {ios_version} ({ios_build})", file=sys.stderr)
+              sys.exit(1)
+          if (ios_version == android_version) != (ios_build == android_build):
               print(f"Version mismatch: iOS {ios_version} ({ios_build}) vs Android {android_version} ({android_build})", file=sys.stderr)
               sys.exit(1)
 
-          print(f"Versions match: {ios_version} ({ios_build})")
+          print(f"iOS {ios_version} ({ios_build}), Android {android_version} ({android_build})")
           PY
 
       - name: Ensure release binaries are not tracked
