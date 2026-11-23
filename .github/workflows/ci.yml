@@ -100,7 +100,7 @@ jobs:
           mkdir -p Config
           cat > Config/Signing.xcconfig <<'EOF'
           DEVELOPMENT_TEAM =
-          PRODUCT_BUNDLE_IDENTIFIER = homelab.foreverhomelab
+          PRODUCT_BUNDLE_IDENTIFIER = com.milangtoth.rackwarden
           EOF
 
       - name: Compile iOS app without signing

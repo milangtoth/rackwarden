@@ -130,8 +130,8 @@ final class SettingsStore {
         static let checkForUpdatesEnabled = "homelab_check_updates_enabled"
     }
 
-    private static let updateFeedURL = URL(string: "https://raw.githubusercontent.com/JohnnWi/homelab-project/main/app-version.json")
-    private static let defaultUpdatePage = "https://github.com/JohnnWi/homelab-project/releases"
+    private static let updateFeedURL = URL(string: "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/app-version.json")
+    private static let defaultUpdatePage = "https://github.com/milangtoth/Rackwarden/releases"
     private static let updateCheckInterval: TimeInterval = 15 * 60
 
     // MARK: - Init
@@ -313,7 +313,7 @@ final class SettingsStore {
     }
 
     private func apply(feed: AppVersionFeed) {
-        let latest = feed.latest.trimmingCharacters(in: .whitespacesAndNewlines)
+        let latest = (feed.iosLatest ?? feed.latest).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !latest.isEmpty else {
             availableUpdateVersion = nil
             availableUpdateURL = nil
@@ -431,12 +431,15 @@ final class SettingsStore {
 
 private struct AppVersionFeed: Decodable {
     let latest: String
+    /// iOS and Android can release separately; falls back to `latest`.
+    let iosLatest: String?
     let changelog: String?
     let iosURL: String?
     let androidURL: String?
 
     enum CodingKeys: String, CodingKey {
         case latest
+        case iosLatest = "ios_latest"
         case changelog
         case iosURL = "ios_url"
         case androidURL = "android_url"

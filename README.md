@@ -13,7 +13,7 @@ Rackwarden ships two dedicated apps, one for iOS and one for Android, designed a
 
 > Originally created by [JohnnWi](https://github.com/JohnnWi/homelab-project) as Homelab Dashboard, whose repository is now archived. Rackwarden is an independent continuation and is not affiliated with or endorsed by the original author.
 
-> **Status:** Rackwarden has not published a release yet. The renaming is in progress, so the apps, screenshots, and project folders still use the Homelab name. To try it today, [build from source](#-getting-started).
+> **Status:** Rackwarden has not published a release yet. The renaming is in progress, so the Android app, screenshots, and project folders still use the Homelab name. To try it today, [build from source](#-getting-started).
 
 > **Disclaimer:** This software is provided as-is, without warranties. See the [license](LICENSE) for details.
 
@@ -287,8 +287,6 @@ There are no prebuilt Rackwarden downloads yet. Until the first release, build t
 
 Releases will be published on the [Releases page](https://github.com/milangtoth/Rackwarden/releases).
 
-> **Note:** The `apps.json` source and in-app update checks in this repository still point to the original project's final release, so don't use them to install or update Rackwarden.
-
 ---
 
 ## 🔧 Getting Started
@@ -297,13 +295,13 @@ Releases will be published on the [Releases page](https://github.com/milangtoth/
 
 - `HomelabSwift/`: native iOS app built with SwiftUI.
 - `HomelabAndroid/`: native Android app built with Kotlin and Jetpack Compose.
-- `docs/`: privacy and support pages inherited from the original project, pending an update.
-- `apps.json` and `app-version.json`: update metadata for the AltStore Classic / SideStore source and in-app update banner, pending an update.
+- `docs/`: privacy and support pages for the app.
+- `apps.json` and `app-version.json`: update metadata for the AltStore Classic / SideStore source and in-app update banner. Empty until the first release.
 
 ### Build for iOS
 
-1. Open `HomelabSwift/Homelab.xcodeproj` in Xcode 26+.
-2. Select your development team under **Signing & Capabilities**.
+1. Copy `HomelabSwift/Config/Signing.xcconfig.example` to `HomelabSwift/Config/Signing.xcconfig`, then set your own bundle ID and development team. The file is gitignored.
+2. Open `HomelabSwift/Homelab.xcodeproj` in Xcode 26+. Set the team in the file rather than under **Signing & Capabilities**, so it isn't committed.
 3. Build and run on a real device or simulator.
 
 ### Build for Android

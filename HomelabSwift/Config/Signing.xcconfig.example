@@ -1,0 +1,4 @@
+// Copy to Signing.xcconfig (gitignored) and fill in your own values.
+PRODUCT_BUNDLE_IDENTIFIER = com.example.rackwarden
+CODE_SIGN_STYLE = Automatic
+DEVELOPMENT_TEAM =

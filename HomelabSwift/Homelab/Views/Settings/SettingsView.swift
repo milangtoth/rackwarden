@@ -318,18 +318,10 @@ struct SettingsView: View {
                 )
                 Divider().padding(.horizontal, 16)
                 ContactRow(
-                    title: localizer.t.settingsContactReddit,
-                    iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/reddit.png",
-                    fallbackSystemName: "bubble.left.and.bubble.right.fill",
-                    url: "https://www.reddit.com/user/finalyxre/",
-                    color: Color(hex: "#FF4500")
-                )
-                Divider().padding(.horizontal, 16)
-                ContactRow(
                     title: localizer.t.settingsContactLinuxUpdate,
                     iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/github.png",
                     fallbackSystemName: "chevron.left.slash.chevron.right",
-                    url: "https://github.com/JohnnWi/homelab-project",
+                    url: "https://github.com/milangtoth/Rackwarden",
                     color: Color(hex: "#24292F")
                 )
             }

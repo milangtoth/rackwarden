@@ -765,15 +765,9 @@ fun SettingsScreen(
                         modifier = Modifier.weight(1f)
                     )
                     ContactChip(
-                        label = stringResource(R.string.settings_contact_reddit),
-                        iconUrl = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/reddit.png",
-                        onClick = { uriHandler.openUri("https://www.reddit.com/user/finalyxre/") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    ContactChip(
                         label = stringResource(R.string.settings_contact_repository),
                         iconUrl = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/github.png",
-                        onClick = { uriHandler.openUri("https://github.com/JohnnWi/homelab-project") },
+                        onClick = { uriHandler.openUri("https://github.com/milangtoth/Rackwarden") },
                         modifier = Modifier.weight(1f)
                     )
                 }

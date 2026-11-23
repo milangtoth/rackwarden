@@ -996,7 +996,6 @@ struct Translations {
     let settingsHomeCyberpunkCardsDesc: String
     let settingsContacts: String
     let settingsContactTelegram: String
-    let settingsContactReddit: String
     let settingsContactLinuxUpdate: String
     let settingsHideService: String
     let settingsShowService: String
