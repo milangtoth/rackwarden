@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Homelab</string>
+	<string>Rackwarden</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -29,10 +29,10 @@
 				<key>CFBundleIconName</key>
 				<string>AppIconDark</string>
 			</dict>
-			<key>AppIconTintedDark</key>
+			<key>AppIconGreen</key>
 			<dict>
 				<key>CFBundleIconName</key>
-				<string>AppIconTintedDark</string>
+				<string>AppIconGreen</string>
 			</dict>
 			<key>AppIconTintedLight</key>
 			<dict>
@@ -53,9 +53,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.6.2</string>
+	<string>2.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>39</string>
+	<string>40</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tailscale</string>
@@ -68,7 +68,7 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Homelab Backup</string>
+			<string>Rackwarden Backup</string>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>LSHandlerRank</key>
@@ -91,9 +91,9 @@
 		<true/>
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Homelab uses Face ID to quickly unlock the app.</string>
+	<string>Rackwarden uses Face ID to quickly unlock the app.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Homelab needs to access your local network to communicate with your self-hosted services.</string>
+	<string>Rackwarden needs to access your local network to communicate with your self-hosted services.</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
@@ -104,7 +104,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Homelab Backup</string>
+			<string>Rackwarden Backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>

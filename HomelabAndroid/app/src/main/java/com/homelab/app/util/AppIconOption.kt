@@ -14,37 +14,37 @@ enum class AppIconOption(
     DEFAULT(
         persistedValue = "default",
         aliasName = ".launcher.DefaultIconAlias",
-        previewDrawableRes = R.drawable.ic_launcher_foreground_default,
+        previewDrawableRes = R.drawable.ic_launcher_preview_default,
         labelRes = R.string.settings_app_icon_default
     ),
     DARK(
         persistedValue = "dark",
         aliasName = ".launcher.DarkIconAlias",
-        previewDrawableRes = R.drawable.ic_launcher_foreground_dark,
+        previewDrawableRes = R.drawable.ic_launcher_preview_dark,
         labelRes = R.string.settings_app_icon_dark
     ),
     CLEAR_LIGHT(
         persistedValue = "clear_light",
         aliasName = ".launcher.ClearLightIconAlias",
-        previewDrawableRes = R.drawable.ic_launcher_foreground_clear_light,
+        previewDrawableRes = R.drawable.ic_launcher_preview_clear_light,
         labelRes = R.string.settings_app_icon_clear_light
     ),
     CLEAR_DARK(
         persistedValue = "clear_dark",
         aliasName = ".launcher.ClearDarkIconAlias",
-        previewDrawableRes = R.drawable.ic_launcher_foreground_clear_dark,
+        previewDrawableRes = R.drawable.ic_launcher_preview_clear_dark,
         labelRes = R.string.settings_app_icon_clear_dark
     ),
     TINTED_LIGHT(
         persistedValue = "tinted_light",
         aliasName = ".launcher.TintedLightIconAlias",
-        previewDrawableRes = R.drawable.ic_launcher_foreground_tinted_light,
+        previewDrawableRes = R.drawable.ic_launcher_preview_tinted_light,
         labelRes = R.string.settings_app_icon_tinted_light
     ),
     TINTED_DARK(
         persistedValue = "tinted_dark",
         aliasName = ".launcher.TintedDarkIconAlias",
-        previewDrawableRes = R.drawable.ic_launcher_foreground_tinted_dark,
+        previewDrawableRes = R.drawable.ic_launcher_preview_tinted_dark,
         labelRes = R.string.settings_app_icon_tinted_dark
     );
 

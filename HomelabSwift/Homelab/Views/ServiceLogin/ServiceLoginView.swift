@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 struct ServiceLoginView: View {
@@ -7,7 +8,10 @@ struct ServiceLoginView: View {
     @Environment(ServicesStore.self) private var servicesStore
     @Environment(Localizer.self) private var localizer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
 
+    /// Test logins use this ID so they never touch the saved instance.
+    @State private var draftInstanceId = UUID()
     @State private var label = ""
     @State private var url = ""
     @State private var fallbackUrl = ""
@@ -30,6 +34,11 @@ struct ServiceLoginView: View {
     @State private var proxmoxApiTokenSecret = ""
     @State private var unifiAuthMode: UniFiAuthMode = .siteManager
     @State private var showUniFiDemo = false
+    @State private var twoFactorPrompt: TwoFactorPrompt?
+    @State private var forwardAuth = ForwardAuthForm()
+    @State private var offersForwardAuth = false
+    @State private var oauthMethods: BeszelAuthMethods?
+    @State private var showOAuthProviders = false
 
     private var existingInstance: ServiceInstance? {
         existingInstanceId.flatMap { servicesStore.instance(id: $0) }
@@ -49,6 +58,7 @@ struct ServiceLoginView: View {
             || serviceType == .dockhand
             || serviceType == .maltrail
             || serviceType == .uptimeKuma
+            || serviceType == .dockge
     }
 
     private var usesApiKeyAuth: Bool {
@@ -77,7 +87,7 @@ struct ServiceLoginView: View {
     }
 
     private var supportsCredentiallessAuth: Bool {
-        serviceType == .gluetun || serviceType == .flaresolverr
+        serviceType == .gluetun || serviceType == .flaresolverr || serviceType == .scrutiny
     }
 
     private var supportsOptionalApiKey: Bool {
@@ -153,6 +163,23 @@ struct ServiceLoginView: View {
             }
             .task {
                 prefillIfNeeded()
+                AccessProfileStore.shared.beginDraft(draftInstanceId, copying: existingInstanceId)
+                forwardAuth.load(AccessProfileStore.shared.profile(for: draftInstanceId))
+            }
+            .onDisappear {
+                // A login in progress still needs its draft.
+                if !isLoading {
+                    AccessProfileStore.shared.discardDraft(draftInstanceId)
+                    removeUnusedWebData()
+                }
+            }
+            .sheet(item: $twoFactorPrompt) { prompt in
+                TwoFactorSheet(prompt: prompt)
+            }
+            .confirmationDialog(localizer.t.oauthChooseProvider, isPresented: $showOAuthProviders, titleVisibility: .visible) {
+                ForEach(oauthMethods?.providers ?? []) { provider in
+                    Button(provider.title) { startOAuth(with: provider) }
+                }
             }
             .sheet(isPresented: $showUniFiDemo) {
                 NavigationStack {
@@ -228,23 +255,6 @@ struct ServiceLoginView: View {
                             .stroke(AppTheme.info.opacity(0.2), lineWidth: 1)
                     )
 
-                    if serviceType == .nginxProxyManager {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(AppTheme.danger)
-                                .font(.subheadline)
-                            Text(localizer.t.loginHintNpm2FAWarning)
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.danger)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background(AppTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(AppTheme.danger.opacity(0.2), lineWidth: 1)
-                        )
-                    }
                 }
             }
 
@@ -291,13 +301,45 @@ struct ServiceLoginView: View {
                     text: $fallbackUrl,
                     keyboardType: .URL
                 )
+
+                if offersForwardAuth && !usesForwardAuth {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(localizer.t.forwardAuthOffer)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.warning)
+                        Button(localizer.t.forwardAuthOfferButton) {
+                            errorMessage = nil
+                            allowSelfSigned = false
+                            forwardAuth.isOn = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ForwardAuthSection(
+                    form: forwardAuth,
+                    serviceType: serviceType,
+                    instanceId: existingInstanceId ?? draftInstanceId,
+                    url: URL(string: normalizedURL(url)),
+                    fallbackURL: URL(string: normalizedURL(fallbackUrl)),
+                    allowSelfSigned: $allowSelfSigned
+                ) {
+                    if let existingInstanceId {
+                        AccessProfileStore.shared.setDraft(nil, for: draftInstanceId)
+                        await servicesStore.signOutOfProxy(existingInstanceId)
+                        AccessProfileStore.shared.beginDraft(draftInstanceId, copying: existingInstanceId)
+                    } else {
+                        await ForwardAuthWebData.remove(draftInstanceId, urls: [normalizedURL(url), normalizedURL(fallbackUrl)])
+                    }
+                }
             }
 
             if serviceType == .unifiNetwork {
                 unifiAuthSection
             }
 
-            if supportsOptionalApiKey {
+            if supportsOptionalApiKey, !skipsNativeLogin {
                 InputField(
                     icon: "key.fill",
                     placeholder: localizer.t.loginApiKey,
@@ -309,7 +351,9 @@ struct ServiceLoginView: View {
                 )
             }
 
-            if isProxmox {
+            if skipsNativeLogin {
+                EmptyView()
+            } else if isProxmox {
                 proxmoxAuthSection
             } else if usesKomodoAuth {
                 InputField(
@@ -363,18 +407,20 @@ struct ServiceLoginView: View {
                     )
                 }
 
-                InputField(
-                    icon: "lock.fill",
-                    placeholder: isEditing
-                        ? localizer.t.loginPasswordIfChanging
-                        : (serviceType == .patchmon ? localizer.t.loginTokenSecret : localizer.t.loginPassword),
-                    text: $password,
-                    isSecure: !showPassword,
-                    showToggle: true,
-                    toggleAction: { showPassword.toggle() },
-                    showPassword: showPassword,
-                    onSubmit: handleSave
-                )
+                if !hidesPassword {
+                    InputField(
+                        icon: "lock.fill",
+                        placeholder: isEditing
+                            ? localizer.t.loginPasswordIfChanging
+                            : (serviceType == .patchmon ? localizer.t.loginTokenSecret : localizer.t.loginPassword),
+                        text: $password,
+                        isSecure: !showPassword,
+                        showToggle: true,
+                        toggleAction: { showPassword.toggle() },
+                        showPassword: showPassword,
+                        onSubmit: handleSave
+                    )
+                }
 
                 if serviceType == .dockhand || serviceType == .technitium {
                     InputField(
@@ -415,6 +461,23 @@ struct ServiceLoginView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .glassCard()
+
+            if serviceType == .beszel {
+                VStack(alignment: .leading, spacing: 8) {
+                    Button(action: loadOAuthProviders) {
+                        Label(localizer.t.oauthSignIn, systemImage: "person.badge.key.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(serviceColor)
+                    .disabled(isLoading || normalizedURL(url).isEmpty)
+
+                    Text(String(format: localizer.t.oauthHint, OAuthCallback.redirectURL))
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
 
             Button(action: handleSave) {
                 Group {
@@ -461,6 +524,43 @@ struct ServiceLoginView: View {
         .offset(x: shakeOffset)
     }
 
+    private var usesForwardAuth: Bool {
+        forwardAuth.isOn && (serviceType != .unifiNetwork || unifiAuthMode == .localNetwork)
+    }
+
+    private var skipsNativeLogin: Bool {
+        usesForwardAuth && forwardAuth.skipsNativeLogin && ForwardAuth.canSkipNativeLogin(serviceType)
+    }
+
+    /// Makes the proxy credentials available to this setup only; saving keeps them.
+    private func applyForwardAuthDraft() throws {
+        guard usesForwardAuth else {
+            let hadProfile = AccessProfileStore.shared.profile(for: draftInstanceId) != nil
+            AccessProfileStore.shared.setDraft(hadProfile ? AccessProfile() : nil, for: draftInstanceId)
+            return
+        }
+        // Choosing a login can make a header that was fine before unusable.
+        if forwardAuth.method == .headers, let invalid = forwardAuth.firstInvalidHeader(for: serviceType) {
+            throw APIError.custom(String(format: localizer.t.forwardAuthHeaderInvalid, invalid.name))
+        }
+        guard let profile = forwardAuth.profile(
+            primary: AccessOrigin(string: normalizedURL(url)),
+            fallback: AccessOrigin(string: normalizedOptionalURL(fallbackUrl)),
+            allowSelfSigned: allowSelfSigned
+        ) else {
+            throw APIError.custom(localizer.t.forwardAuthConnectFirst)
+        }
+        AccessProfileStore.shared.setDraft(profile, for: draftInstanceId)
+    }
+
+    /// A cancelled setup or a service without forward auth keeps no browser session.
+    private func removeUnusedWebData() {
+        let id = existingInstanceId ?? draftInstanceId
+        guard AccessProfileStore.shared.profile(for: id)?.isEnabled != true else { return }
+        let urls: [String?] = [normalizedURL(url), normalizedURL(fallbackUrl)]
+        Task { await ForwardAuthWebData.remove(id, urls: urls) }
+    }
+
     private var loginHint: String? {
         switch serviceType {
         case .portainer:         return localizer.t.loginHintPortainer
@@ -491,6 +591,8 @@ struct ServiceLoginView: View {
         case .truenas:           return localizer.t.loginHintTruenas
         case .pterodactyl:       return localizer.t.loginHintPterodactyl
         case .calagopus:         return localizer.t.loginHintCalagopus
+        case .scrutiny:          return localizer.t.loginHintScrutiny
+        case .dockge:            return localizer.t.loginHintDockge
         case .qbittorrent, .radarr, .sonarr, .lidarr, .jellyseerr, .prowlarr, .bazarr:
                                  return nil
         default: return nil
@@ -586,6 +688,107 @@ struct ServiceLoginView: View {
     }
 
     private func handleSave() {
+        save { label, url, fallbackUrl in
+            skipsNativeLogin
+                ? try await buildInstanceWithoutLogin(label: label, url: url, fallbackUrl: fallbackUrl)
+                : try await buildInstance(label: label, url: url, fallbackUrl: fallbackUrl)
+        }
+    }
+
+    // MARK: - OAuth
+
+    private var hidesPassword: Bool {
+        serviceType == .beszel && oauthMethods?.allowsPassword == false
+    }
+
+    private func beszelDraftClient() async -> BeszelAPIClient {
+        let client = BeszelAPIClient(instanceId: draftInstanceId)
+        await client.configure(url: "", token: "", allowSelfSigned: allowSelfSigned)
+        return client
+    }
+
+    /// Asks the server which providers it has; a single one is used right away.
+    private func loadOAuthProviders() {
+        endEditing()
+        errorMessage = nil
+        do {
+            try applyForwardAuthDraft()
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+        isLoading = true
+        Task {
+            defer { isLoading = false }
+            do {
+                let methods = try await beszelDraftClient().authMethods(
+                    url: normalizedURL(url), fallbackUrl: normalizedOptionalURL(fallbackUrl)
+                )
+                oauthMethods = methods
+                guard let first = methods.providers.first else {
+                    showError(localizer.t.oauthUnavailable)
+                    return
+                }
+                if methods.providers.count == 1 {
+                    startOAuth(with: first)
+                } else {
+                    showOAuthProviders = true
+                }
+            } catch {
+                showError(resolveErrorMessage(error))
+                if !usesForwardAuth, let target = URL(string: normalizedURL(url)) {
+                    offersForwardAuth = await ForwardAuth.isProtected(target, allowSelfSigned: allowSelfSigned)
+                }
+            }
+        }
+    }
+
+    private func startOAuth(with provider: BeszelAuthMethods.Provider) {
+        guard let baseURL = oauthMethods?.baseURL else { return }
+        save { label, url, fallbackUrl in
+            // The address may have changed since the providers were loaded.
+            guard [url, fallbackUrl].contains(baseURL) else { throw APIError.custom(localizer.t.oauthInvalidReply) }
+            let reply: URL
+            do {
+                reply = try await webAuthenticationSession.authenticate(
+                    using: provider.signInURL(),
+                    callback: .customScheme(OAuthCallback.scheme),
+                    additionalHeaderFields: [:]
+                )
+            } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+                throw CancellationError()
+            }
+            let code = try OAuthCallback.code(from: reply, state: provider.state)
+            let client = await beszelDraftClient()
+            let email = normalizedOptional(username)
+            let token: String
+            var account = email
+            do {
+                let session = try await client.completeOAuth(provider, code: code, baseURL: baseURL, email: email)
+                token = session.token
+                account = session.record?.email ?? email
+            } catch APIError.twoFactorRequired(let challenge) {
+                let sent = try await client.requestTwoFactorCode(challenge)
+                token = try await promptForCode(
+                    sent,
+                    resend: { try await client.requestTwoFactorCode($0) },
+                    verify: { try await client.completeTwoFactor($0, code: $1) }
+                )
+            }
+            return ServiceInstance(
+                id: existingInstanceId ?? draftInstanceId,
+                type: .beszel,
+                label: label,
+                url: url,
+                token: token,
+                username: account,
+                fallbackUrl: fallbackUrl,
+                allowSelfSigned: allowSelfSigned
+            )
+        }
+    }
+
+    private func save(_ build: @escaping @MainActor (String, String, String?) async throws -> ServiceInstance) {
         errorMessage = nil
 
         let cleanUrl = normalizedURL(url)
@@ -597,29 +800,107 @@ struct ServiceLoginView: View {
         let cleanFallback = normalizedOptionalURL(fallbackUrl)
         let cleanLabel = label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? serviceType.displayName : label.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        do {
+            try applyForwardAuthDraft()
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+
         HapticManager.medium()
         isLoading = true
 
         Task {
             do {
-                let instance = try await buildInstance(label: cleanLabel, url: cleanUrl, fallbackUrl: cleanFallback)
+                let instance = try await build(cleanLabel, cleanUrl, cleanFallback)
+                AccessProfileStore.shared.commitDraft(draftInstanceId, to: instance)
+                removeUnusedWebData()
                 await servicesStore.saveInstance(instance, refreshPiHoleAuth: false)
                 HapticManager.success()
                 dismiss()
+            } catch is CancellationError {
+                // The user closed the code prompt.
             } catch {
                 showError(resolveErrorMessage(error))
+                if !usesForwardAuth, let target = URL(string: cleanUrl) {
+                    offersForwardAuth = await ForwardAuth.isProtected(target, allowSelfSigned: allowSelfSigned)
+                }
             }
             isLoading = false
         }
     }
 
+    private func promptForCode(
+        _ challenge: TwoFactorChallenge,
+        resend: ((TwoFactorChallenge) async throws -> TwoFactorChallenge)? = nil,
+        verify: @escaping (TwoFactorChallenge, String) async throws -> String
+    ) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            twoFactorPrompt = TwoFactorPrompt(
+                challenge: challenge, resend: resend, verify: verify, continuation: continuation
+            )
+        }
+    }
+
+    /// Checks that the service's API really answers with the proxy credentials alone.
+    private func buildInstanceWithoutLogin(label: String, url: String, fallbackUrl: String?) async throws -> ServiceInstance {
+        do {
+            switch serviceType {
+            case .adguardHome:
+                let client = AdGuardHomeAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, username: "", password: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                try await client.authenticate(url: url, username: "", password: "", fallbackUrl: fallbackUrl)
+            case .qbittorrent:
+                let client = QbittorrentAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, sid: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.getTransferInfo()
+            case .maltrail:
+                let client = MaltrailAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.authenticate(url: url, username: nil, password: nil, fallbackUrl: fallbackUrl)
+            case .uptimeKuma:
+                let client = UptimeKumaAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                try await client.authenticate(url: url, username: nil, password: nil, fallbackUrl: fallbackUrl)
+            case .gluetun, .flaresolverr:
+                let client = GenericAPIClient(serviceType: serviceType, instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, apiKey: nil, allowSelfSigned: allowSelfSigned)
+                guard await client.ping() else { throw APIError.custom(localizer.t.loginErrorFailed) }
+            case .scrutiny:
+                let client = ScrutinyAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.getOverview()
+            case .dockge:
+                let client = DockgeAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, token: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.getOverview()
+            default:
+                throw APIError.custom(localizer.t.loginErrorCredentials)
+            }
+        } catch {
+            throw error.isLoginRefusal ? APIError.custom(localizer.t.forwardAuthNeedsLogin) : error
+        }
+        return ServiceInstance(
+            id: existingInstanceId ?? draftInstanceId,
+            type: serviceType,
+            label: label,
+            url: url,
+            token: "",
+            fallbackUrl: fallbackUrl,
+            allowSelfSigned: allowSelfSigned
+        )
+    }
+
     private func buildInstance(label: String, url: String, fallbackUrl: String?) async throws -> ServiceInstance {
         if let existing = existingInstance {
+            // Going back to the service's own login has to be tested like a new one.
+            let hadNoLogin = AccessProfileStore.shared.profile(for: existing.id)?.usesNativeLogin == false
             let metadataOnly = existing.url == url
                 && existing.username == normalizedOptional(username)
                 && existing.apiKey == normalizedOptional(apiKey)
                 && normalizedOptional(password).map { !$0.isEmpty } != true
                 && serviceType != .proxmox
+                && !hadNoLogin
 
             if metadataOnly {
                 return ServiceInstance(
@@ -688,11 +969,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = PortainerAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = PortainerAPIClient(instanceId: draftInstanceId)
             await client.configureWithApiKey(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticateWithApiKey(url: url, apiKey: key)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .portainer,
                 label: label,
                 url: url,
@@ -708,11 +989,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = HealthchecksAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = HealthchecksAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .healthchecks,
                 label: label,
                 url: url,
@@ -728,11 +1009,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = WakapiAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = WakapiAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .wakapi,
                 label: label,
                 url: url,
@@ -748,11 +1029,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = PterodactylAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = PterodactylAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .pterodactyl,
                 label: label,
                 url: url,
@@ -763,16 +1044,69 @@ struct ServiceLoginView: View {
                 allowSelfSigned: allowSelfSigned
             )
 
+        case .scrutiny:
+            // Scrutiny has no login of its own.
+            let client = ScrutinyAPIClient(instanceId: draftInstanceId)
+            await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+            _ = try await client.getOverview()
+            return ServiceInstance(
+                id: existingInstanceId ?? draftInstanceId,
+                type: .scrutiny,
+                label: label,
+                url: url,
+                fallbackUrl: fallbackUrl,
+                allowSelfSigned: allowSelfSigned
+            )
+
+        case .dockge:
+            let client = DockgeAPIClient(instanceId: draftInstanceId)
+            let identity = normalizedOptional(username)
+            let token: String
+            if let secret = normalizedOptional(password) {
+                guard let identity else { throw APIError.custom(localizer.t.loginErrorCredentials) }
+                await client.configure(url: url, token: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                do {
+                    token = try await client.login(username: identity, password: secret)
+                } catch APIError.twoFactorRequired(let challenge) {
+                    token = try await promptForCode(
+                        challenge,
+                        verify: { _, code in try await client.login(username: identity, password: secret, code: code) }
+                    )
+                }
+            } else if let existing = existingInstance, !existing.token.isEmpty {
+                guard existing.url == url else { throw APIError.custom(localizer.t.loginErrorPasswordRequired) }
+                token = existing.token
+            } else {
+                token = ""
+            }
+            await client.configure(url: url, token: token, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+            do {
+                _ = try await client.getOverview()
+            } catch APIError.unauthorized where token.isEmpty {
+                throw APIError.custom(localizer.t.loginErrorCredentials)
+            }
+            // The session does not expire, so the password is not kept.
+            return ServiceInstance(
+                id: existingInstanceId ?? draftInstanceId,
+                type: .dockge,
+                label: label,
+                url: url,
+                token: token,
+                username: identity,
+                fallbackUrl: fallbackUrl,
+                allowSelfSigned: allowSelfSigned
+            )
+
         case .calagopus:
             let key = normalizedOptional(apiKey) ?? existingInstance?.apiKey
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = CalagopusAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = CalagopusAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .calagopus,
                 label: label,
                 url: url,
@@ -788,11 +1122,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = TrueNASAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = TrueNASAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .truenas,
                 label: label,
                 url: url,
@@ -811,11 +1145,11 @@ struct ServiceLoginView: View {
             let mode = unifiAuthMode
             let effectiveURL = mode == .siteManager ? "https://api.ui.com" : url
             let effectiveFallback = mode == .siteManager ? nil : fallbackUrl
-            let client = UniFiAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = UniFiAPIClient(instanceId: draftInstanceId)
             await client.configure(url: effectiveURL, apiKey: key, mode: mode, fallbackUrl: effectiveFallback, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: effectiveURL, apiKey: key, mode: mode, fallbackUrl: effectiveFallback)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .unifiNetwork,
                 label: label,
                 url: effectiveURL,
@@ -832,11 +1166,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = LinuxUpdateAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = LinuxUpdateAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiToken: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiToken: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .linuxUpdate,
                 label: label,
                 url: url,
@@ -852,11 +1186,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = DockmonAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = DockmonAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .dockmon,
                 label: label,
                 url: url,
@@ -885,11 +1219,11 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
 
-            let client = KomodoAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = KomodoAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, apiSecret: resolvedSecret, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, apiSecret: resolvedSecret, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .komodo,
                 label: label,
                 url: url,
@@ -903,7 +1237,7 @@ struct ServiceLoginView: View {
 
         case .maltrail:
             let identity = normalizedOptional(username) ?? existingInstance?.username
-            let client = MaltrailAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = MaltrailAPIClient(instanceId: draftInstanceId)
             let secret = normalizedOptional(password)
             if (identity == nil) != (secret == nil) {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
@@ -931,7 +1265,7 @@ struct ServiceLoginView: View {
                 fallbackUrl: fallbackUrl
             )
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .maltrail,
                 label: label,
                 url: url,
@@ -957,7 +1291,7 @@ struct ServiceLoginView: View {
                 resolvedPassword = existingInstance?.password
             }
 
-            let client = UptimeKumaAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = UptimeKumaAPIClient(instanceId: draftInstanceId)
             await client.configure(
                 url: url,
                 fallbackUrl: fallbackUrl,
@@ -972,7 +1306,7 @@ struct ServiceLoginView: View {
                 fallbackUrl: fallbackUrl
             )
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .uptimeKuma,
                 label: label,
                 url: url,
@@ -1003,7 +1337,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
 
-            let client = TechnitiumAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = TechnitiumAPIClient(instanceId: draftInstanceId)
             await client.configure(
                 url: url,
                 token: existingInstance?.token ?? "",
@@ -1021,7 +1355,7 @@ struct ServiceLoginView: View {
             )
 
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .technitium,
                 label: label,
                 url: url,
@@ -1051,7 +1385,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
 
-            let client = DockhandAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = DockhandAPIClient(instanceId: draftInstanceId)
             await client.configure(
                 url: url,
                 sessionCookie: existingInstance?.token ?? "",
@@ -1068,7 +1402,7 @@ struct ServiceLoginView: View {
                 fallbackUrl: fallbackUrl
             )
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .dockhand,
                 label: label,
                 url: url,
@@ -1098,7 +1432,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
 
-            let client = CraftyAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = CraftyAPIClient(instanceId: draftInstanceId)
             await client.configure(
                 url: url,
                 username: identity,
@@ -1114,7 +1448,7 @@ struct ServiceLoginView: View {
                 fallbackUrl: fallbackUrl
             )
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .craftyController,
                 label: label,
                 url: url,
@@ -1130,11 +1464,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = JellystatAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = JellystatAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .jellystat,
                 label: label,
                 url: url,
@@ -1150,7 +1484,7 @@ struct ServiceLoginView: View {
             guard let secret, !secret.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = PiHoleAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = PiHoleAPIClient(instanceId: draftInstanceId)
             await client.configure(
                 url: url,
                 sid: existingInstance?.token ?? "",
@@ -1162,7 +1496,7 @@ struct ServiceLoginView: View {
             let sid = try await client.authenticate(url: url, password: secret, fallbackUrl: fallbackUrl)
             let authMode: PiHoleAuthMode = sid == secret ? .legacy : .session
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .pihole,
                 label: label,
                 url: url,
@@ -1184,11 +1518,11 @@ struct ServiceLoginView: View {
             if existingInstance != nil && url != existingInstance?.url && normalizedOptional(password) == nil {
                 throw APIError.custom(localizer.t.loginErrorPasswordRequired)
             }
-            let client = AdGuardHomeAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = AdGuardHomeAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, username: identity, password: secret, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, username: identity, password: secret, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .adguardHome,
                 label: label,
                 url: url,
@@ -1211,9 +1545,18 @@ struct ServiceLoginView: View {
             let token: String
             let storedPassword: String?
             if let secret, !secret.isEmpty {
-                let client = BeszelAPIClient(instanceId: existingInstanceId ?? UUID())
+                let client = BeszelAPIClient(instanceId: draftInstanceId)
                 await client.configure(url: url, token: existingInstance?.token ?? "", fallbackUrl: fallbackUrl, email: identity, password: secret, allowSelfSigned: allowSelfSigned)
-                token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                do {
+                    token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                } catch APIError.twoFactorRequired(let challenge) {
+                    let sent = try await client.requestTwoFactorCode(challenge)
+                    token = try await promptForCode(
+                        sent,
+                        resend: { try await client.requestTwoFactorCode($0) },
+                        verify: { try await client.completeTwoFactor($0, code: $1) }
+                    )
+                }
                 storedPassword = secret
             } else if let existingToken = existingInstance?.token, !existingToken.isEmpty {
                 token = existingToken
@@ -1222,7 +1565,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .beszel,
                 label: label,
                 url: url,
@@ -1246,7 +1589,7 @@ struct ServiceLoginView: View {
             let resolvedUsername: String
             let storedPassword: String?
             if let secret, !secret.isEmpty {
-                let client = GiteaAPIClient(instanceId: existingInstanceId ?? UUID())
+                let client = GiteaAPIClient(instanceId: draftInstanceId)
                 await client.configure(url: url, token: existingInstance?.token ?? "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
                 let result = try await client.authenticate(url: url, username: identity, password: secret, fallbackUrl: fallbackUrl)
                 token = result.token
@@ -1260,7 +1603,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .gitea,
                 label: label,
                 url: url,
@@ -1283,9 +1626,16 @@ struct ServiceLoginView: View {
             let token: String
             let storedPassword: String?
             if let secret, !secret.isEmpty {
-                let client = NginxProxyManagerAPIClient(instanceId: existingInstanceId ?? UUID())
+                let client = NginxProxyManagerAPIClient(instanceId: draftInstanceId)
                 await client.configure(url: url, token: existingInstance?.token ?? "", fallbackUrl: fallbackUrl, email: identity, password: secret, allowSelfSigned: allowSelfSigned)
-                token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                do {
+                    token = try await client.authenticate(url: url, email: identity, password: secret, fallbackUrl: fallbackUrl)
+                } catch APIError.twoFactorRequired(let challenge) {
+                    token = try await promptForCode(
+                        challenge,
+                        verify: { try await client.completeTwoFactor($0, code: $1) }
+                    )
+                }
                 storedPassword = secret
             } else if let existingToken = existingInstance?.token, !existingToken.isEmpty {
                 token = existingToken
@@ -1294,7 +1644,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .nginxProxyManager,
                 label: label,
                 url: url,
@@ -1311,11 +1661,11 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
             let orgId = normalizedOptional(username)
-            let client = PangolinAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = PangolinAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, orgId: orgId, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl, orgId: orgId)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .pangolin,
                 label: label,
                 url: url,
@@ -1337,7 +1687,7 @@ struct ServiceLoginView: View {
             }
             let resolvedSecret: String
             if let tokenSecret, !tokenSecret.isEmpty {
-                let client = PatchmonAPIClient(instanceId: existingInstanceId ?? UUID())
+                let client = PatchmonAPIClient(instanceId: draftInstanceId)
                 await client.configure(url: url, tokenKey: tokenKey, tokenSecret: tokenSecret, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
                 try await client.authenticate(url: url, tokenKey: tokenKey, tokenSecret: tokenSecret, fallbackUrl: fallbackUrl)
                 resolvedSecret = tokenSecret
@@ -1347,7 +1697,7 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .patchmon,
                 label: label,
                 url: url,
@@ -1363,11 +1713,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = PlexAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = PlexAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, token: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, token: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .plex,
                 label: label,
                 url: url,
@@ -1387,7 +1737,7 @@ struct ServiceLoginView: View {
             if existingInstance != nil && url != existingInstance?.url && normalizedOptional(password) == nil {
                 throw APIError.custom(localizer.t.loginErrorPasswordRequired)
             }
-            let client = QbittorrentAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = QbittorrentAPIClient(instanceId: draftInstanceId)
             await client.configure(
                 url: url,
                 sid: existingInstance?.token ?? "",
@@ -1398,7 +1748,7 @@ struct ServiceLoginView: View {
             )
             let sid = try await client.authenticate(url: url, username: identity, password: secret, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .qbittorrent,
                 label: label,
                 url: url,
@@ -1414,11 +1764,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = RadarrAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = RadarrAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .radarr,
                 label: label,
                 url: url,
@@ -1433,11 +1783,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = SonarrAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = SonarrAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .sonarr,
                 label: label,
                 url: url,
@@ -1452,11 +1802,11 @@ struct ServiceLoginView: View {
             guard let key, !key.isEmpty else {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
-            let client = LidarrAPIClient(instanceId: existingInstanceId ?? UUID())
+            let client = LidarrAPIClient(instanceId: draftInstanceId)
             await client.configure(url: url, apiKey: key, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
             try await client.authenticate(url: url, apiKey: key, fallbackUrl: fallbackUrl)
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: .lidarr,
                 label: label,
                 url: url,
@@ -1472,13 +1822,13 @@ struct ServiceLoginView: View {
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
             let genericType = serviceType
-            let client = GenericAPIClient(serviceType: genericType, instanceId: existingInstanceId ?? UUID())
+            let client = GenericAPIClient(serviceType: genericType, instanceId: draftInstanceId)
             await client.configure(url: url, fallbackUrl: fallbackUrl, apiKey: key, allowSelfSigned: allowSelfSigned)
             guard await client.ping() else {
                 throw APIError.custom(localizer.t.loginErrorFailed)
             }
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: genericType,
                 label: label,
                 url: url,
@@ -1491,13 +1841,13 @@ struct ServiceLoginView: View {
         case .gluetun, .flaresolverr:
             let key = normalizedOptional(apiKey) ?? existingInstance?.apiKey
             let genericType = serviceType
-            let client = GenericAPIClient(serviceType: genericType, instanceId: existingInstanceId ?? UUID())
+            let client = GenericAPIClient(serviceType: genericType, instanceId: draftInstanceId)
             await client.configure(url: url, fallbackUrl: fallbackUrl, apiKey: key, allowSelfSigned: allowSelfSigned)
             guard await client.ping() else {
                 throw APIError.custom(localizer.t.loginErrorFailed)
             }
             return ServiceInstance(
-                id: existingInstanceId ?? UUID(),
+                id: existingInstanceId ?? draftInstanceId,
                 type: genericType,
                 label: label,
                 url: url,
@@ -1516,7 +1866,7 @@ struct ServiceLoginView: View {
                 guard let token, !token.isEmpty else {
                     throw APIError.custom(localizer.t.proxmoxInvalidApiToken)
                 }
-                let client = ProxmoxAPIClient(instanceId: existingInstanceId ?? UUID())
+                let client = ProxmoxAPIClient(instanceId: draftInstanceId)
                 await client.configure(
                     url: url,
                     fallbackUrl: fallbackUrl,
@@ -1525,7 +1875,7 @@ struct ServiceLoginView: View {
                 )
                 try await client.authenticateWithApiToken(url: url, apiToken: token)
                 return ServiceInstance(
-                    id: existingInstanceId ?? UUID(),
+                    id: existingInstanceId ?? draftInstanceId,
                     type: .proxmox,
                     label: label,
                     url: url,
@@ -1554,14 +1904,13 @@ struct ServiceLoginView: View {
                 } else {
                     throw APIError.custom(localizer.t.loginErrorCredentials)
                 }
-                let client = ProxmoxAPIClient(instanceId: existingInstanceId ?? UUID())
+                let client = ProxmoxAPIClient(instanceId: draftInstanceId)
                 let resolvedRealm = proxmoxRealm.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "pam" : proxmoxRealm
                 await client.configure(
                     url: url,
                     fallbackUrl: fallbackUrl,
                     username: identity,
                     password: resolvedPassword,
-                    otp: mfaCode.trimmingCharacters(in: .whitespacesAndNewlines),
                     realm: resolvedRealm,
                     allowSelfSigned: allowSelfSigned
                 )
@@ -1573,7 +1922,7 @@ struct ServiceLoginView: View {
                     realm: resolvedRealm
                 )
                 return ServiceInstance(
-                    id: existingInstanceId ?? UUID(),
+                    id: existingInstanceId ?? draftInstanceId,
                     type: .proxmox,
                     label: label,
                     url: url,
@@ -1582,7 +1931,6 @@ struct ServiceLoginView: View {
                     apiKey: result.csrf,
                     proxmoxAuthMode: .credentials,
                     proxmoxRealm: resolvedRealm,
-                    proxmoxOTP: normalizedOptional(mfaCode),
                     fallbackUrl: fallbackUrl,
                     allowSelfSigned: allowSelfSigned,
                     password: resolvedPassword

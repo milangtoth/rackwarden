@@ -20,6 +20,8 @@ struct SettingsView: View {
     @State private var showDebugAuthPin = false
     @State private var debugAuthPin = ""
     @State private var debugAuthError: String? = nil
+    @State private var confirmsProxySignOut = false
+    @State private var isSigningOutOfProxies = false
     var body: some View {
         NavigationStack {
             ZStack {
@@ -44,6 +46,7 @@ struct SettingsView: View {
 
                             languageSection
                             securitySection
+                            forwardAuthSection
                             backupSection
                             contactsSection
                             debugSection
@@ -294,8 +297,8 @@ struct SettingsView: View {
             return localizer.t.settingsAppIconClearDark
         case .tintedLight:
             return localizer.t.settingsAppIconTintedLight
-        case .tintedDark:
-            return localizer.t.settingsAppIconTintedDark
+        case .green:
+            return localizer.t.settingsAppIconGreen
         }
     }
 
@@ -310,27 +313,11 @@ struct SettingsView: View {
 
             VStack(spacing: 0) {
                 ContactRow(
-                    title: localizer.t.settingsContactTelegram,
-                    iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/telegram.png",
-                    fallbackSystemName: "paperplane.fill",
-                    url: "https://t.me/finalyxre",
-                    color: Color(hex: "#26A5E4")
-                )
-                Divider().padding(.horizontal, 16)
-                ContactRow(
-                    title: localizer.t.settingsContactReddit,
-                    iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/reddit.png",
-                    fallbackSystemName: "bubble.left.and.bubble.right.fill",
-                    url: "https://www.reddit.com/user/finalyxre/",
-                    color: Color(hex: "#FF4500")
-                )
-                Divider().padding(.horizontal, 16)
-                ContactRow(
                     title: localizer.t.settingsContactLinuxUpdate,
                     iconUrl: "https://cdn.jsdelivr.net/gh/selfhst/icons/png/github.png",
                     fallbackSystemName: "chevron.left.slash.chevron.right",
-                    url: "https://github.com/JohnnWi/homelab-project",
-                    color: Color(hex: "#24292F")
+                    url: "https://github.com/milangtoth/Rackwarden",
+                    color: .primary
                 )
             }
             .glassCard()
@@ -628,6 +615,85 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Forward Auth Section
+
+    private var forwardAuthSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizer.t.forwardAuthSettingsTitle)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundStyle(AppTheme.accent)
+                .padding(.leading, 8)
+                .padding(.top, 16)
+
+            VStack(spacing: 0) {
+                HStack {
+                    Image(systemName: "person.2.badge.key.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.accent)
+                        .frame(width: 32, height: 32)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localizer.t.forwardAuthShare)
+                            .font(.body.weight(.medium))
+                        Text(localizer.t.forwardAuthShareDesc)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Toggle(localizer.t.forwardAuthShare, isOn: Binding(
+                        get: { settingsStore.sharesForwardAuthSession },
+                        set: { enabled in
+                            settingsStore.sharesForwardAuthSession = enabled
+                            Task { await servicesStore.forwardAuthSharingChanged() }
+                        }
+                    ))
+                    .labelsHidden()
+                    .tint(AppTheme.accent)
+                }
+                .padding(16)
+
+                Divider().padding(.horizontal, 16)
+
+                Button {
+                    confirmsProxySignOut = true
+                } label: {
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.title3)
+                            .foregroundStyle(AppTheme.danger)
+                            .frame(width: 32, height: 32)
+                            .accessibilityHidden(true)
+                        Text(localizer.t.forwardAuthSignOutAll)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(AppTheme.danger)
+                        Spacer()
+                        if isSigningOutOfProxies { ProgressView() }
+                    }
+                    .padding(16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isSigningOutOfProxies)
+                .confirmationDialog(
+                    localizer.t.forwardAuthSignOutAllMessage, isPresented: $confirmsProxySignOut, titleVisibility: .visible
+                ) {
+                    Button(localizer.t.forwardAuthSignOutAll, role: .destructive) {
+                        isSigningOutOfProxies = true
+                        Task {
+                            await servicesStore.signOutOfAllProxies()
+                            isSigningOutOfProxies = false
+                        }
+                    }
+                }
+            }
+            .glassCard()
+        }
+    }
+
     // MARK: - Backup Section
 
     private var backupSection: some View {
@@ -816,8 +882,9 @@ struct ContactRow: View {
                 case .success(let image):
                     image
                         .resizable()
-                        .renderingMode(.original)
+                        .renderingMode(.template)
                         .scaledToFit()
+                        .foregroundStyle(color)
                 case .failure:
                     Image(systemName: fallbackSystemName)
                         .font(.title3)

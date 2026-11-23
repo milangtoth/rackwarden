@@ -95,7 +95,7 @@ actor PortainerAPIClient {
         req.httpBody = body1
         req.timeoutInterval = 8
 
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
         let (data1, resp1) = try await session.data(for: req)
 
         if let http = resp1 as? HTTPURLResponse, http.statusCode == 200 {

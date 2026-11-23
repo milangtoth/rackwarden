@@ -108,10 +108,10 @@ jobs:
               identifier: $id,
               caption: $caption,
               date: $date,
-              tintColor: "#4A90D9",
+              tintColor: "#12D6B3",
               notify: true,
               url: $url,
-              appID: "homelab.foreverhomelab"
+              appID: "com.milangtoth.rackwarden"
             }')
 
           jq --argjson new_news "$NEW_NEWS" \
@@ -140,19 +140,18 @@ jobs:
             fi
           done
 
-          # Fall back to releases page if assets not found
-          RELEASES_URL="https://github.com/${{ github.repository }}/releases/tag/$RELEASE_TAG"
-          [ -z "$IPA_URL" ] && IPA_URL="$RELEASES_URL"
-          [ -z "$APK_URL" ] && APK_URL="$RELEASES_URL"
-
           # Strip markdown headers for in-app changelog display
           CHANGELOG=$(echo "$RELEASE_BODY" | sed 's/^#* *//')
 
+          # Only bump a platform whose binary is attached to this release, so an
+          # iOS-only release does not prompt Android users (and vice versa).
           jq --arg ver "$VERSION" \
              --arg cl "$CHANGELOG" \
              --arg ios "$IPA_URL" \
              --arg android "$APK_URL" \
-            '.latest = $ver | .changelog = $cl | .ios_url = $ios | .android_url = $android' \
+            'if $ios != "" then .ios_latest = $ver | .ios_url = $ios else . end
+             | if $android != "" then .latest = $ver | .android_url = $android else . end
+             | if $ios != "" or $android != "" then .changelog = $cl else . end' \
             app-version.json > app_ver_tmp.json && mv app_ver_tmp.json app-version.json
 
           echo "Updated app-version.json to version $VERSION"

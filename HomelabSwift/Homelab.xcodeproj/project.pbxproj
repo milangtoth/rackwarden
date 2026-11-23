@@ -7,6 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7AC3E5500000000000000BB5 /* LauncherComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB5 /* LauncherComponents.swift */; };
+		7AC3E5500000000000000BB4 /* DockgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB4 /* DockgeTests.swift */; };
+		7AC3E5500000000000000BB3 /* ScrutinyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB3 /* ScrutinyTests.swift */; };
+		7AC3E5500000000000000BB2 /* DockgeDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB2 /* DockgeDashboard.swift */; };
+		7AC3E5500000000000000BB1 /* ScrutinyDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB1 /* ScrutinyDashboard.swift */; };
+		7AC3E5500000000000000BB0 /* DockgeAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FB0 /* DockgeAPIClient.swift */; };
+		7AC3E5500000000000000BAF /* ScrutinyAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAF /* ScrutinyAPIClient.swift */; };
+		7AC3E5500000000000000BAE /* SocketIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAE /* SocketIO.swift */; };
+		7AC3E5500000000000000BAD /* WebSocketChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAD /* WebSocketChannel.swift */; };
 		001FA6007779556F8CF2BDC5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B518BC3D0A31F29612A69B75 /* Assets.xcassets */; };
 		00623F9E5FFF09815953B86C /* UniFiDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFB37C2FF152CEF28395F2C /* UniFiDashboard.swift */; };
 		011C344816A77F708FD46AF1 /* PatchmonModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 853EA1B757B0BD3540F2AEED /* PatchmonModels.swift */; };
@@ -72,6 +81,8 @@
 		663F29038479453699652E94 /* AdGuardHomeQueryLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3E11D0571609D7927FCD5A /* AdGuardHomeQueryLogView.swift */; };
 		698E6B77D281367DA484C23B /* WakapiAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C444B827E878BDFFC5BA3C7C /* WakapiAPIClient.swift */; };
 		6B883FF0F9673181B59F8C83 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85D0D2A2905370C31F3A8ADE /* KeychainService.swift */; };
+		7AC3E5500000000000000BA1 /* AccessProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA1 /* AccessProfileStore.swift */; };
+		7AC3E5500000000000000BA0 /* AccessProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA0 /* AccessProfile.swift */; };
 		6DEEA589BD92BE70DF884F07 /* PangolinComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB703E4CE642EF44D10991B /* PangolinComponents.swift */; };
 		6E756D41A4E6231DF6AD016E /* LidarrModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38A351665E7EFAF8D4A3A05A /* LidarrModels.swift */; };
 		6F0B15FC2525EA13C63611B5 /* PinSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C61051F7EA9F32A6342570D /* PinSetupView.swift */; };
@@ -122,6 +133,11 @@
 		A08D2B6FBC3D9252E47321FF /* AdGuardHomeUserRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44370CC6FB6ADE55FA632A02 /* AdGuardHomeUserRulesView.swift */; };
 		A15E4596A2950B61F233E229 /* UptimeKumaDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C16B119CB2EDEE60B4784D /* UptimeKumaDashboard.swift */; };
 		A1B0DB1FF6B1CB2BEB21B2CE /* KeychainServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */; };
+		7AC3E5500000000000000BA8 /* ForwardAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA8 /* ForwardAuthTests.swift */; };
+		7AC3E5500000000000000BAC /* OAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAC /* OAuthTests.swift */; };
+		7AC3E5500000000000000BAA /* TrueNASClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAA /* TrueNASClientTests.swift */; };
+		7AC3E5500000000000000BA5 /* TwoFactorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA5 /* TwoFactorTests.swift */; };
+		7AC3E5500000000000000BA2 /* AccessProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA2 /* AccessProfileTests.swift */; };
 		A283181CEA487B0C8346D967 /* PiHoleAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B236EC8434642BB311F3E1A8 /* PiHoleAPIClient.swift */; };
 		A3DF6B4D547020804E10A0C0 /* HealthchecksDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4425B283650DDB0057DE0E75 /* HealthchecksDashboard.swift */; };
 		A3E3BAB096611E807728CA89 /* ContainerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3116D5544353B573C4C2B0B /* ContainerListView.swift */; };
@@ -150,6 +166,9 @@
 		C462B63CC5FE35CD624ADFCD /* NpmStreamCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8904009FE0CC197DE3B1492A /* NpmStreamCard.swift */; };
 		C6542378592F0A5E5B44BFB7 /* DockmonDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB334FC7E3B327B41891F806 /* DockmonDashboard.swift */; };
 		C86FF5E6A543278A18B16E9B /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB95F4E19C7D3082B4D6484C /* APIError.swift */; };
+		7AC3E5500000000000000BA6 /* ForwardAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA6 /* ForwardAuth.swift */; };
+		7AC3E5500000000000000BAB /* OAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAB /* OAuth.swift */; };
+		7AC3E5500000000000000BA3 /* TwoFactor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA3 /* TwoFactor.swift */; };
 		C97E7FCF77033F146747AF2E /* UniFiClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE20E665B54E273AB66E450 /* UniFiClientsView.swift */; };
 		CC23054F0C872CC583502288 /* MaltrailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE4821BAECE125BF5D455F /* MaltrailModels.swift */; };
 		CC2C094024169C94BD06958F /* LinuxUpdateAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7D0097236C2F692BCAB383 /* LinuxUpdateAPIClient.swift */; };
@@ -175,6 +194,9 @@
 		E41C86CEB570A40EFB82ED17 /* WakapiDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4742ECB110ED743BABA54DEE /* WakapiDashboard.swift */; };
 		E518D45F6F1F6DE81BD0F398 /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 292913B0F73994A51217D87F /* BackupView.swift */; };
 		E5242DCA4ACD2835153FBB96 /* ServiceLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1F09E5D4D69F8311840E4F /* ServiceLoginView.swift */; };
+		7AC3E5500000000000000BA7 /* ForwardAuthSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA7 /* ForwardAuthSheet.swift */; };
+		7AC3E5500000000000000BA9 /* ForwardAuthSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA9 /* ForwardAuthSection.swift */; };
+		7AC3E5500000000000000BA4 /* TwoFactorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA4 /* TwoFactorSheet.swift */; };
 		E6E04DD8242F5252CD32CCAB /* ServiceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6FEE939313E58D34CE4BDB /* ServiceType.swift */; };
 		E75363C9B789E7FFC1024F51 /* LidarrDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 794B793766A1B499D331C639 /* LidarrDashboard.swift */; };
 		E75752B2EF79FC31623F21A3 /* ServicesStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57CF72E451CED741576C2F4D /* ServicesStoreTests.swift */; };
@@ -206,6 +228,15 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		7AC3E5500000000000000FB5 /* LauncherComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherComponents.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FB4 /* DockgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DockgeTests.swift; path = DockgeTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FB3 /* ScrutinyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScrutinyTests.swift; path = ScrutinyTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FB2 /* DockgeDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DockgeDashboard.swift; path = Dockge/DockgeDashboard.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FB1 /* ScrutinyDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScrutinyDashboard.swift; path = Scrutiny/ScrutinyDashboard.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FB0 /* DockgeAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DockgeAPIClient.swift; path = Dockge/DockgeAPIClient.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAF /* ScrutinyAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScrutinyAPIClient.swift; path = Scrutiny/ScrutinyAPIClient.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAE /* SocketIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SocketIO.swift; path = SocketIO.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAD /* WebSocketChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WebSocketChannel.swift; path = WebSocketChannel.swift; sourceTree = "<group>"; };
 		04940FAEDE28A509EB1E0EEB /* NpmAccessListForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmAccessListForm.swift; sourceTree = "<group>"; };
 		04B5CCA8C815CB0FB9A9B076 /* DockhandComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockhandComponents.swift; sourceTree = "<group>"; };
 		0726BE937688EDCEF843DA4A /* MaltrailAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaltrailAPIClient.swift; sourceTree = "<group>"; };
@@ -249,7 +280,7 @@
 		38A351665E7EFAF8D4A3A05A /* LidarrModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LidarrModels.swift; sourceTree = "<group>"; };
 		38F7AE0005466E2FF260B000 /* Translations+English.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Translations+English.swift"; sourceTree = "<group>"; };
 		39AD858A4CEA15DE099AC986 /* BackupModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupModels.swift; sourceTree = "<group>"; };
-		3A088F5140A5297EA91E3821 /* Homelab.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Homelab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A088F5140A5297EA91E3821 /* Homelab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Homelab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A9F6388FB1B6AA57648FF16 /* DockmonModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockmonModels.swift; sourceTree = "<group>"; };
 		3AD1D644D530DE462BB79AA2 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		3B344770A37AF6E6CF0CCB9E /* PatchmonDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchmonDashboard.swift; sourceTree = "<group>"; };
@@ -280,6 +311,9 @@
 		5A59E69E9542AF07ED998399 /* ProxmoxNodeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxNodeDetailView.swift; sourceTree = "<group>"; };
 		5EF76E1EC7E853732127B6AA /* ProxmoxGuestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxGuestDetailView.swift; sourceTree = "<group>"; };
 		5F1F09E5D4D69F8311840E4F /* ServiceLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceLoginView.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA7 /* ForwardAuthSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuthSheet.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA9 /* ForwardAuthSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuthSection.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA4 /* TwoFactorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFactorSheet.swift; sourceTree = "<group>"; };
 		5F7EDC22BCE4C069B41BA65C /* RadarrModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarrModels.swift; sourceTree = "<group>"; };
 		6159D00710B8E9BA71CAFDC0 /* CalagopusAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalagopusAPIClient.swift; sourceTree = "<group>"; };
 		61FF27D860A84E8974681CFE /* QbittorrentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QbittorrentModels.swift; sourceTree = "<group>"; };
@@ -307,6 +341,8 @@
 		853EA1B757B0BD3540F2AEED /* PatchmonModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchmonModels.swift; sourceTree = "<group>"; };
 		8569FC25F0824870C9BFD6A2 /* NpmProxyHostCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmProxyHostCard.swift; sourceTree = "<group>"; };
 		85D0D2A2905370C31F3A8ADE /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA1 /* AccessProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessProfileStore.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA0 /* AccessProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AccessProfile.swift; path = ../Models/AccessProfile.swift; sourceTree = "<group>"; };
 		88B51084F8D0D0D7C999B8C3 /* BeszelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeszelModels.swift; sourceTree = "<group>"; };
 		8904009FE0CC197DE3B1492A /* NpmStreamCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmStreamCard.swift; sourceTree = "<group>"; };
 		8D02DC8E1FAB21C2D68A01A6 /* GenericMediaDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenericMediaDashboard.swift; sourceTree = "<group>"; };
@@ -338,6 +374,9 @@
 		A8C246817EA53ED0E3950005 /* ProxmoxBackupJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxBackupJobsView.swift; sourceTree = "<group>"; };
 		AA26C2B4C3B48757F16F0E7B /* ProxmoxPoolDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxPoolDetailView.swift; sourceTree = "<group>"; };
 		AB95F4E19C7D3082B4D6484C /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA6 /* ForwardAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuth.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAB /* OAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuth.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA3 /* TwoFactor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFactor.swift; sourceTree = "<group>"; };
 		AD139A00611FED93C43C0833 /* HealthchecksModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthchecksModels.swift; sourceTree = "<group>"; };
 		ADE20E665B54E273AB66E450 /* UniFiClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniFiClientsView.swift; sourceTree = "<group>"; };
 		AE1461ABFFED5C380B73195B /* AdGuardHomeFiltersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdGuardHomeFiltersView.swift; sourceTree = "<group>"; };
@@ -393,6 +432,11 @@
 		FC6C069732CC13919CD60F36 /* Translations+French.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Translations+French.swift"; sourceTree = "<group>"; };
 		FC89D463559422B61BC300AF /* ContainerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerDetailView.swift; sourceTree = "<group>"; };
 		FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA8 /* ForwardAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuthTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAC /* OAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OAuthTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAA /* TrueNASClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrueNASClientTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA5 /* TwoFactorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFactorTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA2 /* AccessProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessProfileTests.swift; sourceTree = "<group>"; };
 		FDFB37C2FF152CEF28395F2C /* UniFiDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniFiDashboard.swift; sourceTree = "<group>"; };
 		FE7A7BFF374B6DE9CE7384EE /* PiHoleDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiHoleDashboard.swift; sourceTree = "<group>"; };
 		FEF0A029C7F3CF79994A268B /* NpmRedirectionHostForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NpmRedirectionHostForm.swift; sourceTree = "<group>"; };
@@ -697,6 +741,9 @@
 			isa = PBXGroup;
 			children = (
 				5F1F09E5D4D69F8311840E4F /* ServiceLoginView.swift */,
+				7AC3E5500000000000000FA7 /* ForwardAuthSheet.swift */,
+				7AC3E5500000000000000FA9 /* ForwardAuthSection.swift */,
+				7AC3E5500000000000000FA4 /* TwoFactorSheet.swift */,
 			);
 			path = ServiceLogin;
 			sourceTree = "<group>";
@@ -712,6 +759,7 @@
 		5A93214C3BDCB9BEC5FCCD73 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				7AC3E5500000000000000FB5 /* LauncherComponents.swift */,
 				DBB688D017EE8175FB27EC7D /* ServiceErrorView.swift */,
 				0F13CBE9BF5234A3FF34586F /* ServiceIconView.swift */,
 			);
@@ -998,6 +1046,8 @@
 				575579918416C21F4E6DC488 /* BackupManager.swift */,
 				39AD858A4CEA15DE099AC986 /* BackupModels.swift */,
 				85D0D2A2905370C31F3A8ADE /* KeychainService.swift */,
+				7AC3E5500000000000000FA1 /* AccessProfileStore.swift */,
+				7AC3E5500000000000000FA0 /* AccessProfile.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1051,6 +1101,8 @@
 				F1265188363BF5B5C00056A5 /* Beszel */,
 				ECAF9E33BDB4EE0FFFF630D0 /* Bookmarks */,
 				2A11C19BD60250B7E009AD55 /* Calagopus */,
+				7AC3E5500000000000000FB2 /* DockgeDashboard.swift */,
+				7AC3E5500000000000000FB1 /* ScrutinyDashboard.swift */,
 				5A93214C3BDCB9BEC5FCCD73 /* Components */,
 				766B8D5D15CBF16824D30AD0 /* Crafty */,
 				D544ABDB8DF1FE38D7862D8B /* Dockhand */,
@@ -1183,6 +1235,13 @@
 			children = (
 				FEF389260911EADF7079A97B /* APIClient.swift */,
 				AB95F4E19C7D3082B4D6484C /* APIError.swift */,
+				7AC3E5500000000000000FA6 /* ForwardAuth.swift */,
+				7AC3E5500000000000000FAB /* OAuth.swift */,
+				7AC3E5500000000000000FB0 /* DockgeAPIClient.swift */,
+				7AC3E5500000000000000FAF /* ScrutinyAPIClient.swift */,
+				7AC3E5500000000000000FAE /* SocketIO.swift */,
+				7AC3E5500000000000000FAD /* WebSocketChannel.swift */,
+				7AC3E5500000000000000FA3 /* TwoFactor.swift */,
 				34351F37F1A0778D6CFC90B3 /* GenericAPIClient.swift */,
 				0FF3AB848856515A57C1F122 /* AdGuardHome */,
 				D5B24EF44902FCBD35F6D145 /* Beszel */,
@@ -1231,6 +1290,13 @@
 				A1C0C96DF48BA12ABCC04C11 /* BackupModelsTests.swift */,
 				DB311F83CBAAC39C90D50E6D /* FormattersTests.swift */,
 				FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */,
+				7AC3E5500000000000000FA8 /* ForwardAuthTests.swift */,
+				7AC3E5500000000000000FAC /* OAuthTests.swift */,
+				7AC3E5500000000000000FB4 /* DockgeTests.swift */,
+				7AC3E5500000000000000FB3 /* ScrutinyTests.swift */,
+				7AC3E5500000000000000FAA /* TrueNASClientTests.swift */,
+				7AC3E5500000000000000FA5 /* TwoFactorTests.swift */,
+				7AC3E5500000000000000FA2 /* AccessProfileTests.swift */,
 				94D7A0C04FD3A10D46F836A9 /* ModelDecodingTests.swift */,
 				57CF72E451CED741576C2F4D /* ServicesStoreTests.swift */,
 			);
@@ -1390,7 +1456,6 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					F030701E1A7DE1C00D08FE68 = {
-						DevelopmentTeam = 74584D6P85;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -1433,6 +1498,16 @@
 			files = (
 				63A39B89AC9B8F48B3BC3147 /* APIClient.swift in Sources */,
 				C86FF5E6A543278A18B16E9B /* APIError.swift in Sources */,
+				7AC3E5500000000000000BA6 /* ForwardAuth.swift in Sources */,
+				7AC3E5500000000000000BB5 /* LauncherComponents.swift in Sources */,
+				7AC3E5500000000000000BAB /* OAuth.swift in Sources */,
+				7AC3E5500000000000000BB2 /* DockgeDashboard.swift in Sources */,
+				7AC3E5500000000000000BB1 /* ScrutinyDashboard.swift in Sources */,
+				7AC3E5500000000000000BB0 /* DockgeAPIClient.swift in Sources */,
+				7AC3E5500000000000000BAF /* ScrutinyAPIClient.swift in Sources */,
+				7AC3E5500000000000000BAE /* SocketIO.swift in Sources */,
+				7AC3E5500000000000000BAD /* WebSocketChannel.swift in Sources */,
+				7AC3E5500000000000000BA3 /* TwoFactor.swift in Sources */,
 				A9AED87CFEFFDD6E065E3A0A /* AdGuardHomeAPIClient.swift in Sources */,
 				5739C0189A11AB2E9F581D4C /* AdGuardHomeBlockedServicesView.swift in Sources */,
 				4E06A01BDB74CF4F678913CD /* AdGuardHomeDashboard.swift in Sources */,
@@ -1496,6 +1571,8 @@
 				CD29007C4FB0AD271F85673C /* JellystatAPIClient.swift in Sources */,
 				06B033BE66307E6CC8E75459 /* JellystatDashboard.swift in Sources */,
 				6B883FF0F9673181B59F8C83 /* KeychainService.swift in Sources */,
+				7AC3E5500000000000000BA1 /* AccessProfileStore.swift in Sources */,
+				7AC3E5500000000000000BA0 /* AccessProfile.swift in Sources */,
 				4CF60BF28CB87B137D89A229 /* KomodoAPIClient.swift in Sources */,
 				1497D7B4F3F97AE5825880D0 /* KomodoDashboard.swift in Sources */,
 				FA7A4B88DACB08CBE39AAF48 /* KomodoModels.swift in Sources */,
@@ -1581,6 +1658,9 @@
 				CE78DBCA639D954A7CCB26D3 /* ServiceErrorView.swift in Sources */,
 				D3FEA9D2C02EFC910D98FEB9 /* ServiceIconView.swift in Sources */,
 				E5242DCA4ACD2835153FBB96 /* ServiceLoginView.swift in Sources */,
+				7AC3E5500000000000000BA7 /* ForwardAuthSheet.swift in Sources */,
+				7AC3E5500000000000000BA9 /* ForwardAuthSection.swift in Sources */,
+				7AC3E5500000000000000BA4 /* TwoFactorSheet.swift in Sources */,
 				E6E04DD8242F5252CD32CCAB /* ServiceType.swift in Sources */,
 				BAA4219103CC83A339C434BD /* ServicesStore.swift in Sources */,
 				7EBB5603EC5B23E166D98E33 /* SettingsStore.swift in Sources */,
@@ -1621,6 +1701,13 @@
 				83C02FB2B277928F3C9E720A /* BackupModelsTests.swift in Sources */,
 				D76DF8769FE2AE2032847D05 /* FormattersTests.swift in Sources */,
 				A1B0DB1FF6B1CB2BEB21B2CE /* KeychainServiceTests.swift in Sources */,
+				7AC3E5500000000000000BA8 /* ForwardAuthTests.swift in Sources */,
+				7AC3E5500000000000000BAC /* OAuthTests.swift in Sources */,
+				7AC3E5500000000000000BB4 /* DockgeTests.swift in Sources */,
+				7AC3E5500000000000000BB3 /* ScrutinyTests.swift in Sources */,
+				7AC3E5500000000000000BAA /* TrueNASClientTests.swift in Sources */,
+				7AC3E5500000000000000BA5 /* TwoFactorTests.swift in Sources */,
+				7AC3E5500000000000000BA2 /* AccessProfileTests.swift in Sources */,
 				D84F9D353E2953087A1E5F7D /* ModelDecodingTests.swift in Sources */,
 				E75752B2EF79FC31623F21A3 /* ServicesStoreTests.swift in Sources */,
 			);
@@ -1641,13 +1728,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C7F560D9B1083811461B4B44 /* Signing.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = (
-					AppIconDark,
-					AppIconClearLight,
-					AppIconClearDark,
-					AppIconTintedLight,
-					AppIconTintedDark,
-				);
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconGreen";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Homelab/Homelab.entitlements;
@@ -1683,13 +1764,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C7F560D9B1083811461B4B44 /* Signing.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = (
-					AppIconDark,
-					AppIconClearLight,
-					AppIconClearDark,
-					AppIconTintedLight,
-					AppIconTintedDark,
-				);
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIconDark AppIconClearLight AppIconClearDark AppIconTintedLight AppIconGreen";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Homelab/Homelab.entitlements;

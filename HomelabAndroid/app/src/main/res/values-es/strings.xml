@@ -255,7 +255,7 @@
     <string name="settings_app_icon_clear_light">Claro transparente</string>
     <string name="settings_app_icon_clear_dark">Oscuro transparente</string>
     <string name="settings_app_icon_tinted_light">Teñido claro</string>
-    <string name="settings_app_icon_tinted_dark">Teñido oscuro</string>
+    <string name="settings_app_icon_tinted_dark">Verde</string>
     <string name="settings_home_cyberpunk_title">Tarjetas Home Cyberpunk</string>
     <string name="settings_home_cyberpunk_desc">Aplica bordes neón y gradientes de marca a las tarjetas de servicios en Inicio.</string>
     <string name="settings_language_label">Idioma</string>
@@ -272,8 +272,6 @@
     <string name="settings_update_dismiss">Ocultar</string>
     <string name="update_popup_title">Actualización Disponible</string>
     <string name="update_popup_body">Una nueva versión de Homelab está disponible. Actualiza ahora para las últimas mejoras.</string>
-    <string name="settings_contact_telegram">Telegram</string>
-    <string name="settings_contact_reddit">Reddit</string>
     <string name="settings_contact_repository">GitHub</string>
     <string name="settings_debug_label">Debug</string>
     <string name="settings_debug_logs_desc">Ver logs para resolver problemas de conexión y parsing.</string>

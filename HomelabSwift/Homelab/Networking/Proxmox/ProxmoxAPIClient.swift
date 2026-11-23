@@ -20,7 +20,6 @@ actor ProxmoxAPIClient {
     private var csrfToken: String = ""
     private var storedUsername: String = ""
     private var storedPassword: String = ""
-    private var storedOTP: String?
     private var storedRealm: String = "pam"
     private var ticketIssuedAt: Date?
 
@@ -47,7 +46,6 @@ actor ProxmoxAPIClient {
         apiTokenString: String? = nil,
         username: String? = nil,
         password: String? = nil,
-        otp: String? = nil,
         realm: String? = nil,
         allowSelfSigned: Bool? = nil
     ) {
@@ -58,7 +56,6 @@ actor ProxmoxAPIClient {
         self.apiTokenString = apiTokenString ?? ""
         self.storedUsername = username ?? ""
         self.storedPassword = password ?? ""
-        self.storedOTP = otp?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true ? nil : otp
         self.storedRealm = (realm?.isEmpty == false ? realm : nil) ?? "pam"
         if let allowSelfSigned {
             storedAllowSelfSigned = allowSelfSigned
@@ -99,8 +96,8 @@ actor ProxmoxAPIClient {
         return bodyString.data(using: .utf8)
     }
 
-    private func authenticationSession() -> URLSession {
-        BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+    private func authenticationSession() -> AccessSession {
+        BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
     }
 
     private func markAuthenticated(ticket: String, csrf: String) {
@@ -318,7 +315,6 @@ actor ProxmoxAPIClient {
                 url: refreshURL,
                 username: storedUsername,
                 password: storedPassword,
-                otp: storedOTP,
                 realm: storedRealm
             )
             markAuthenticated(ticket: result.ticket, csrf: result.csrf)

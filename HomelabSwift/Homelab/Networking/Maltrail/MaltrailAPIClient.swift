@@ -426,7 +426,7 @@ actor MaltrailAPIClient {
             request.setValue(cookie, forHTTPHeaderField: "Cookie")
         }
 
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
         let (data, response) = try await session.data(for: request)
         try Self.validate(response: response, data: data)
         return data
@@ -445,7 +445,7 @@ actor MaltrailAPIClient {
         request.setValue("text/plain", forHTTPHeaderField: "Accept")
         request.httpBody = payload.data(using: .utf8)
 
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
         let (data, response) = try await session.data(for: request)
         let http = try Self.httpResponse(from: response)
 
@@ -511,7 +511,7 @@ actor MaltrailAPIClient {
            contentType.contains("text/html"),
            let body = String(data: data.prefix(500), encoding: .utf8),
            body.lowercased().contains("<html") {
-            throw APIError.custom("Received an HTML response instead of JSON. This often happens when authentication is still required.")
+            throw APIError.custom(Translations.current().errorHtmlResponse)
         }
     }
 

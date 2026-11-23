@@ -130,8 +130,8 @@ final class SettingsStore {
         static let checkForUpdatesEnabled = "homelab_check_updates_enabled"
     }
 
-    private static let updateFeedURL = URL(string: "https://raw.githubusercontent.com/JohnnWi/homelab-project/main/app-version.json")
-    private static let defaultUpdatePage = "https://github.com/JohnnWi/homelab-project/releases"
+    private static let updateFeedURL = URL(string: "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/app-version.json")
+    private static let defaultUpdatePage = "https://github.com/milangtoth/Rackwarden/releases"
     private static let updateCheckInterval: TimeInterval = 15 * 60
 
     // MARK: - Init
@@ -270,10 +270,21 @@ final class SettingsStore {
             return
         }
 
+        // This icon became the standard one, so its old name no longer exists.
+        if UIApplication.shared.alternateIconName == "AppIconTintedDark" {
+            UIApplication.shared.setAlternateIconName(nil)
+            appIcon = .default
+            return
+        }
+
         let currentSystemIcon = AppIconOption.fromAlternateIconName(UIApplication.shared.alternateIconName)
         if currentSystemIcon != appIcon {
             appIcon = currentSystemIcon
         }
+    }
+
+    var sharesForwardAuthSession: Bool = ForwardAuthWebData.isShared {
+        didSet { UserDefaults.standard.set(sharesForwardAuthSession, forKey: ForwardAuthWebData.sharingKey) }
     }
 
     var checkForUpdatesEnabled: Bool {
@@ -313,7 +324,7 @@ final class SettingsStore {
     }
 
     private func apply(feed: AppVersionFeed) {
-        let latest = feed.latest.trimmingCharacters(in: .whitespacesAndNewlines)
+        let latest = (feed.iosLatest ?? feed.latest).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !latest.isEmpty else {
             availableUpdateVersion = nil
             availableUpdateURL = nil
@@ -431,12 +442,15 @@ final class SettingsStore {
 
 private struct AppVersionFeed: Decodable {
     let latest: String
+    /// iOS and Android can release separately; falls back to `latest`.
+    let iosLatest: String?
     let changelog: String?
     let iosURL: String?
     let androidURL: String?
 
     enum CodingKeys: String, CodingKey {
         case latest
+        case iosLatest = "ios_latest"
         case changelog
         case iosURL = "ios_url"
         case androidURL = "android_url"
@@ -449,7 +463,7 @@ enum AppIconOption: String, CaseIterable {
     case clearLight
     case clearDark
     case tintedLight
-    case tintedDark
+    case green
 
     var alternateIconName: String? {
         switch self {
@@ -463,8 +477,8 @@ enum AppIconOption: String, CaseIterable {
             return "AppIconClearDark"
         case .tintedLight:
             return "AppIconTintedLight"
-        case .tintedDark:
-            return "AppIconTintedDark"
+        case .green:
+            return "AppIconGreen"
         }
     }
 
@@ -478,8 +492,8 @@ enum AppIconOption: String, CaseIterable {
             return .clearDark
         case "AppIconTintedLight":
             return .tintedLight
-        case "AppIconTintedDark":
-            return .tintedDark
+        case "AppIconGreen":
+            return .green
         default:
             return .default
         }
@@ -497,8 +511,8 @@ enum AppIconOption: String, CaseIterable {
             return "AppIconPreviewClearDark"
         case .tintedLight:
             return "AppIconPreviewTintedLight"
-        case .tintedDark:
-            return "AppIconPreviewTintedDark"
+        case .green:
+            return "AppIconPreviewGreen"
         }
     }
 }

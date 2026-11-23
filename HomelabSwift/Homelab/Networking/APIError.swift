@@ -72,6 +72,11 @@ public enum APIError: LocalizedError {
     case httpError(statusCode: Int, body: String)
     case decodingError(Error)
     case unauthorized
+    case twoFactorRequired(TwoFactorChallenge)
+    case twoFactorInvalid
+    case signInRequired
+    case forwardAuthRequired
+    case forwardAuthInsecure
     case bothURLsFailed(primaryError: Error, fallbackError: Error)
     case requestConfigurationRequired(ArrRequestConfiguration)
     case custom(String)
@@ -94,6 +99,16 @@ public enum APIError: LocalizedError {
             return String(format: t.errorDecoding, e.localizedDescription)
         case .unauthorized:
             return t.errorUnauthorized
+        case .twoFactorRequired:
+            return t.errorTwoFactorRequired
+        case .twoFactorInvalid:
+            return t.errorTwoFactorInvalid
+        case .signInRequired:
+            return t.errorSignInRequired
+        case .forwardAuthRequired:
+            return t.errorForwardAuthRequired
+        case .forwardAuthInsecure:
+            return t.errorForwardAuthInsecure
         case .bothURLsFailed(let primaryError, let fallbackError):
             if let mapped = APIError.localizedNetworkError(primaryError) ?? APIError.localizedNetworkError(fallbackError) {
                 return mapped

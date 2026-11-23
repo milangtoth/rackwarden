@@ -35,6 +35,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
     case truenas
     case pterodactyl
     case calagopus
+    case scrutiny
+    case dockge
 
     public var id: String { rawValue }
 
@@ -83,6 +85,10 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
             return .pterodactyl
         case "calagopus":
             return .calagopus
+        case "scrutiny":
+            return .scrutiny
+        case "dockge":
+            return .dockge
         default:
             return nil
         }
@@ -161,6 +167,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            return "TrueNAS"
         case .pterodactyl:        return "Pterodactyl"
         case .calagopus:          return "Calagopus"
+        case .scrutiny:          return "Scrutiny"
+        case .dockge:          return "Dockge"
         }
     }
 
@@ -200,6 +208,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            return t.serviceTruenasDesc
         case .pterodactyl:        return t.servicePterodactylDesc
         case .calagopus:          return t.serviceCalagopusDesc
+        case .scrutiny:          return t.serviceScrutinyDesc
+        case .dockge:          return t.serviceDockgeDesc
         }
     }
 
@@ -244,6 +254,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            return "externaldrive.connected.to.line.below.fill"
         case .pterodactyl:        return "gamecontroller.fill"
         case .calagopus:          return "bird.fill"
+        case .scrutiny:          return "internaldrive.fill"
+        case .dockge:          return "square.stack.3d.up.fill"
         }
     }
 
@@ -283,6 +295,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            return "https://cdn.jsdelivr.net/gh/selfhst/icons/png/truenas-scale.png"
         case .pterodactyl:        return "https://cdn.jsdelivr.net/gh/selfhst/icons/png/pterodactyl.png"
         case .calagopus:          return "https://cdn.jsdelivr.net/gh/selfhst/icons/png/calagopus.png"
+        case .scrutiny:          return "https://cdn.jsdelivr.net/gh/selfhst/icons/png/scrutiny.png"
+        case .dockge:          return "https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockge.png"
         }
     }
 
@@ -328,6 +342,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            slug = "truenas-scale"
         case .pterodactyl:        slug = "pterodactyl"
         case .calagopus:          slug = "calagopus"
+        case .scrutiny:          slug = "scrutiny"
+        case .dockge:          slug = "dockge"
         }
         var orderedCandidates: [String] = []
         let primary = iconUrl.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -381,6 +397,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            return "service-truenas"
         case .pterodactyl:        return "service-pterodactyl"
         case .calagopus:          return "service-calagopus"
+        case .scrutiny:          return "service-scrutiny"
+        case .dockge:          return "service-dockge"
         }
     }
 
@@ -420,6 +438,8 @@ public enum ServiceType: String, CaseIterable, Identifiable, Codable, Hashable, 
         case .truenas:            return ServiceColorSet(primary: .truenasAccessibleAccent, dark: Color(hex: "#006EA3"), bg: Color(hex: "#0095D5").opacity(0.09))
         case .pterodactyl:        return ServiceColorSet(primary: Color(hex: "#0E4BEF"), dark: Color(hex: "#0B38C5"), bg: Color(hex: "#0E4BEF").opacity(0.09))
         case .calagopus:          return ServiceColorSet(primary: Color(hex: "#16A34A"), dark: Color(hex: "#15803D"), bg: Color(hex: "#16A34A").opacity(0.09))
+        case .scrutiny:          return ServiceColorSet(primary: Color(hex: "#4F46E5"), dark: Color(hex: "#3730A3"), bg: Color(hex: "#4F46E5").opacity(0.09))
+        case .dockge:          return ServiceColorSet(primary: Color(hex: "#1D9BD1"), dark: Color(hex: "#15749D"), bg: Color(hex: "#1D9BD1").opacity(0.09))
         }
     }
 }

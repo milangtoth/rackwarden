@@ -101,6 +101,7 @@ struct RadarrDashboard: View {
                     status: result.status.map(localizedSearchStatus),
                     posterURL: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance),
                     artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance), instance: serviceInstance),
+                    artworkInstance: serviceInstance,
                     detailsURL: result.detailsURL,
                     details: result.details,
                     canRequest: result.requestTmdbId != nil
@@ -422,6 +423,7 @@ struct RadarrDashboard: View {
                                     status: result.status.map(localizedSearchStatus),
                                     posterURL: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance),
                                     artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance), instance: serviceInstance),
+                                    artworkInstance: serviceInstance,
                                     detailsURL: result.detailsURL,
                                     details: result.details,
                                     canRequest: result.requestTmdbId != nil
@@ -545,6 +547,7 @@ struct RadarrDashboard: View {
             status: movie.isDownloaded ? arr.searchStatusInLibrary : nil,
             posterURL: resolvedServiceArtworkURL(movie.posterUrl, instance: serviceInstance),
             artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(movie.posterUrl, instance: serviceInstance), instance: serviceInstance),
+            artworkInstance: serviceInstance,
             detailsURL: detailsURL,
             details: details,
             canRequest: false

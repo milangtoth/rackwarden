@@ -8,6 +8,8 @@ struct MediaDashboardView: View {
     @AppStorage("homelab_media_arr_tutorial_dismissed") private var hasDismissedTutorial = false
     @State private var quickSetupType: ServiceType?
     @State private var showLogin: ServiceType? = nil
+    @State private var signInContext: ServiceEditorContext?
+    @State private var proxySignIn: ForwardAuthTarget?
     @State private var showingMediaServiceOrder = false
     @State private var cardPreviewsByInstanceId: [UUID: MediaCardPreviewData] = [:]
     @State private var previewLoadingIds: Set<UUID> = []
@@ -23,10 +25,6 @@ struct MediaDashboardView: View {
 
     private var mediaServices: [ServiceType] {
         settingsStore.serviceOrder.filter { ServiceType.mediaServices.contains($0) && !hiddenServiceKeys.contains($0.rawValue) }
-    }
-
-    private var configuredMediaServices: [ServiceType] {
-        mediaServices.filter { servicesStore.hasInstances(for: $0) }
     }
 
     private var unconfiguredMediaServices: [ServiceType] {
@@ -51,26 +49,8 @@ struct MediaDashboardView: View {
         }
     }
 
-    private var hasUnreachableMediaService: Bool {
-        configuredMediaServices
-            .flatMap { servicesStore.instances(for: $0) }
-            .contains { servicesStore.reachability(for: $0.id) == false }
-    }
-
-    private var suppressTailscaleSection: Bool {
-        !servicesStore.instances(for: .pangolin).isEmpty && servicesStore.isTailscaleConnected
-    }
-
     private var arr: ArrStrings {
         localizer.arr
-    }
-
-    private func previewState(for instanceId: UUID) -> MediaCardPreviewState {
-        MediaCardPreviewState(
-            preview: cardPreviewsByInstanceId[instanceId],
-            isLoading: previewLoadingIds.contains(instanceId),
-            hasError: previewErrorIds.contains(instanceId)
-        )
     }
 
     @MainActor
@@ -261,29 +241,26 @@ struct MediaDashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                LazyVStack(spacing: 24) {
-                    headerSection
+                LazyVStack(spacing: 0) {
+                    LauncherHeader(title: localizer.t.tabMedia, icon: "play.fill", count: connectedMediaCount) {
+                        showingMediaServiceOrder = true
+                    }
 
                     if !hasDismissedTutorial {
                         tutorialSection
+                            .padding(.bottom, 16)
                     }
 
-                    if (hasUnreachableMediaService || servicesStore.isTailscaleConnected) && !suppressTailscaleSection {
-                        tailscaleSection
-                    }
-
-                    if !unconfiguredMediaServices.isEmpty {
-                        quickSetupSection
-                    }
+                    TailscaleCard()
 
                     if gridEntries.isEmpty {
                         emptyStateSection
                     } else {
                         serviceGrid
                     }
+                    LauncherFooter(count: connectedMediaCount)
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 40)
             }
             .background(AppTheme.background)
             .navigationBarHidden(true)
@@ -295,6 +272,14 @@ struct MediaDashboardView: View {
             }
             .sheet(item: $showLogin) { type in
                 ServiceLoginView(serviceType: type)
+            }
+            .sheet(item: $signInContext) { context in
+                ServiceLoginView(serviceType: context.serviceType, existingInstanceId: context.instanceId)
+            }
+            .sheet(item: $proxySignIn) { target in
+                ForwardAuthSheet(target: target) { access in
+                    Task { await servicesStore.renewProxySession(target.instanceId, access: access) }
+                }
             }
             .sheet(isPresented: $showingMediaServiceOrder) {
                 MediaServiceOrderSheet()
@@ -326,46 +311,6 @@ struct MediaDashboardView: View {
         }
     }
 
-    private var headerSection: some View {
-        HStack {
-            Text(localizer.t.tabMedia)
-                .font(.largeTitle)
-                .fontWeight(.heavy)
-                .foregroundStyle(.primary)
-
-            Spacer()
-
-            HStack(spacing: 8) {
-                HStack(spacing: 5) {
-                    Image(systemName: "play.fill")
-                        .font(.caption2)
-                        .accessibilityHidden(true)
-                    Text("\(connectedMediaCount)")
-                        .font(.subheadline.bold())
-                }
-                .foregroundStyle(AppTheme.info)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .glassCard(cornerRadius: 20, tint: AppTheme.info.opacity(0.15))
-
-                Button {
-                    HapticManager.light()
-                    showingMediaServiceOrder = true
-                } label: {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(AppTheme.info)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.info.opacity(0.12), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(localizer.t.homeReorderServices)
-            }
-        }
-        .padding(.top, 8)
-        .padding(.bottom, 8)
-    }
-
     private var emptyStateSection: some View {
         VStack(spacing: 16) {
             Image(systemName: "play.tv.fill")
@@ -384,52 +329,6 @@ struct MediaDashboardView: View {
         .frame(maxWidth: .infinity)
         .glassCard()
         .padding(.top, 40)
-    }
-
-    private var tailscaleSection: some View {
-        Button {
-            HapticManager.medium()
-            if let url = URL(string: "tailscale://app") {
-                UIApplication.shared.open(url, options: [:]) { success in
-                    if !success, let appStoreUrl = URL(string: "https://apps.apple.com/app/tailscale/id1475387142") {
-                        UIApplication.shared.open(appStoreUrl)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: servicesStore.isTailscaleConnected ? "shield.checkered" : "network.badge.shield.half.filled")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(servicesStore.isTailscaleConnected ? AppTheme.running : AppTheme.info)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(servicesStore.isTailscaleConnected ? localizer.t.tailscaleConnected : localizer.t.tailscaleOpen)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(.primary)
-                    Text(servicesStore.isTailscaleConnected ? localizer.t.tailscaleSecure : localizer.t.tailscaleOpenDesc)
-                        .font(.caption)
-                        .foregroundStyle(AppTheme.textMuted)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                HStack(spacing: 4) {
-                    Text(localizer.t.tailscaleBadge)
-                        .font(.caption2.bold())
-                        .foregroundStyle(AppTheme.textMuted)
-                    Image(systemName: "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(AppTheme.textMuted)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Color.gray.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .padding(12)
-            .glassCard(tint: servicesStore.isTailscaleConnected ? AppTheme.running.opacity(0.05) : AppTheme.info.opacity(0.05))
-        }
-        .buttonStyle(.plain)
     }
 
     private var tutorialSection: some View {
@@ -478,39 +377,6 @@ struct MediaDashboardView: View {
         .glassCard(tint: AppTheme.info.opacity(0.06))
     }
 
-    private var quickSetupSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(arr.quickSetupTitle)
-                .font(.title3.bold())
-            Text(arr.quickSetupSubtitle)
-                .font(.caption)
-                .foregroundStyle(AppTheme.textSecondary)
-
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
-                ForEach(unconfiguredMediaServices, id: \.self) { type in
-                    Button {
-                        quickSetupType = type
-                    } label: {
-                        HStack(spacing: 8) {
-                            ServiceIconView(type: type, size: 18)
-                            Text(arr.addService(type.displayName))
-                                .font(.caption.bold())
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(type.colors.bg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .padding(16)
-        .glassCard(tint: AppTheme.primary.opacity(0.04))
-    }
-
     private func tutorialRow(icon: String, text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
@@ -531,40 +397,67 @@ struct MediaDashboardView: View {
                             HapticManager.medium()
                             showLogin = type
                         } label: {
-                            MediaCardContent(
+                            ServiceCardContent(
                                 type: type,
-                                instance: nil,
+                                label: type.displayName,
+                                isConnected: false,
+                                isPreferred: false,
                                 reachable: nil,
-                                preview: nil,
-                                previewLoading: false,
-                                previewFailed: false,
-                                onRequestPreview: nil,
-                                onRefresh: nil
+                                isPinging: false,
+                                summary: nil,
+                                isSummaryLoading: false,
+                                t: localizer.t
                             )
                         }
                         .buttonStyle(.plain)
                     case .connected(let type, let instance):
-                        let state = previewState(for: instance.id)
-                        NavigationLink(value: MediaServiceRoute(type: type, instanceId: instance.id)) {
-                            MediaCardContent(
-                                type: type,
-                                instance: instance,
-                                reachable: servicesStore.reachability(for: instance.id),
-                                preview: state.preview,
-                                previewLoading: state.isLoading,
-                                previewFailed: state.hasError,
-                                onRequestPreview: {
-                                    await requestCardPreview(for: instance)
-                                },
-                                onRefresh: {
-                                    await servicesStore.checkReachability(for: instance.id)
-                                }
-                            )
-                        }
-                        .buttonStyle(.plain)
+                        connectedCard(type, instance)
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func connectedCard(_ type: ServiceType, _ instance: ServiceInstance) -> some View {
+        let preview = cardPreviewsByInstanceId[instance.id]
+        let reachable = servicesStore.reachability(for: instance.id)
+        let card = ServiceCardContent(
+            type: type,
+            label: instance.displayLabel,
+            isConnected: true,
+            isPreferred: servicesStore.preferredInstance(for: type)?.id == instance.id,
+            reachable: reachable,
+            needsSignIn: servicesStore.needsSignIn(instance.id),
+            isPinging: servicesStore.isPinging(instanceId: instance.id),
+            summary: preview?.summary,
+            detail: reachable == true ? preview?.detail : nil,
+            isSummaryLoading: preview == nil && previewLoadingIds.contains(instance.id),
+            t: localizer.t
+        ) {
+            Task { await servicesStore.checkReachability(for: instance.id) }
+        }
+        Group {
+            if servicesStore.needsSignIn(instance.id) {
+                Button {
+                    if let url = servicesStore.expiredProxyURL(instance.id),
+                       let target = ForwardAuthTarget(renewing: url, instance: instance) {
+                        proxySignIn = target
+                    } else {
+                        signInContext = ServiceEditorContext(serviceType: type, instanceId: instance.id)
+                    }
+                } label: {
+                    card
+                }
+            } else {
+                NavigationLink(value: MediaServiceRoute(type: type, instanceId: instance.id)) {
+                    card
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .task(id: reachable) {
+            if reachable != false { await requestCardPreview(for: instance) }
         }
     }
 }
@@ -598,195 +491,15 @@ private struct MediaCardPreviewMetric: Identifiable, Equatable {
 private struct MediaCardPreviewData: Equatable {
     let headline: String?
     let metrics: [MediaCardPreviewMetric]
-}
 
-private struct MediaCardPreviewState {
-    let preview: MediaCardPreviewData?
-    let isLoading: Bool
-    let hasError: Bool
-}
-
-private struct MediaCardContent: View {
-    @Environment(ServicesStore.self) private var servicesStore
-    @Environment(Localizer.self) private var localizer
-
-    let type: ServiceType
-    let instance: ServiceInstance?
-    let reachable: Bool?
-    let preview: MediaCardPreviewData?
-    let previewLoading: Bool
-    let previewFailed: Bool
-    let onRequestPreview: (() async -> Void)?
-    let onRefresh: (() async -> Void)?
-
-    private var isConnected: Bool { instance != nil }
-    private var connectionStatusText: String {
-        if !isConnected { return localizer.t.loginConnect }
-        if reachable == true { return localizer.t.statusOnline }
-        if reachable == false { return localizer.t.statusUnreachable }
-        return localizer.t.statusVerifying
-    }
-    private var connectionStatusColor: Color {
-        if !isConnected { return AppTheme.textMuted }
-        if reachable == true { return Color.green }
-        if reachable == false { return Color.red }
-        return AppTheme.info
-    }
-    private var cardGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                type.colors.primary.opacity(isConnected ? 0.13 : 0.06),
-                type.colors.dark.opacity(isConnected ? 0.04 : 0.015),
-                Color.clear
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    /// The first value is shown like on the Home tab, the rest on one line below the name.
+    var summary: ServiceSummaryInfo? {
+        metrics.first.map { ServiceSummaryInfo(value: $0.value, label: $0.label) }
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                ServiceIconView(type: type, size: 24)
-                    .frame(width: 40, height: 40)
-                    .background(type.colors.bg, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                Spacer()
-
-                if isConnected && previewLoading && preview != nil {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(type.colors.primary)
-                } else if isConnected && reachable == false, onRefresh != nil {
-                    Button {
-                        Task { await onRefresh?() }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(type.colors.primary)
-                            .frame(width: 32, height: 32)
-                            .background(type.colors.primary.opacity(0.1), in: Circle())
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.bold())
-                        .foregroundStyle(AppTheme.textMuted)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(instance?.displayLabel ?? type.displayName)
-                    .font(.subheadline.weight(.bold))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.82)
-
-                statusChip
-            }
-
-            if isConnected {
-                if let preview {
-                    if let headline = preview.headline, !headline.isEmpty {
-                        Text(headline)
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .lineLimit(1)
-                    }
-
-                    VStack(spacing: 3) {
-                        ForEach(preview.metrics.prefix(2)) { metric in
-                            metricRow(metric)
-                        }
-                    }
-
-                    if let extraMetric = preview.metrics.dropFirst(2).first {
-                        metricPill(extraMetric)
-                    }
-                } else if previewLoading {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(type.colors.primary)
-                } else if previewFailed, reachable == true {
-                    Text(localizer.t.noData)
-                        .font(.caption2)
-                        .foregroundStyle(AppTheme.textMuted)
-                        .lineLimit(1)
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: 196, alignment: .topLeading)
-        .padding(14)
-        .glassCard(tint: isConnected ? type.colors.primary.opacity(0.06) : nil)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(cardGradient)
-                .blendMode(.plusLighter)
-                .opacity(0.7)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(type.colors.primary.opacity(isConnected ? 0.15 : 0.06), lineWidth: 1)
-        )
-        .task(id: reachable) {
-            if let instance, reachable == nil {
-                await servicesStore.checkReachability(for: instance.id)
-            }
-            if isConnected, reachable != false {
-                await onRequestPreview?()
-            }
-        }
-    }
-
-    private var statusChip: some View {
-        HStack(spacing: 6) {
-            if isConnected && reachable == nil {
-                ProgressView()
-                    .controlSize(.mini)
-                    .tint(connectionStatusColor)
-            } else {
-                Circle()
-                    .fill(connectionStatusColor)
-                    .frame(width: 6, height: 6)
-            }
-            Text(connectionStatusText)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(connectionStatusColor)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .background(connectionStatusColor.opacity(isConnected ? 0.14 : 0.1), in: Capsule())
-    }
-
-    private func metricRow(_ metric: MediaCardPreviewMetric) -> some View {
-        HStack(spacing: 6) {
-            Text(metric.label)
-                .font(.caption2)
-                .foregroundStyle(AppTheme.textSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-            Spacer(minLength: 0)
-            Text(metric.value)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-        }
-    }
-
-    private func metricPill(_ metric: MediaCardPreviewMetric) -> some View {
-        HStack(spacing: 6) {
-            Text(metric.label)
-                .font(.caption2.weight(.semibold))
-            Text(metric.value)
-                .font(.caption2.weight(.heavy))
-                .lineLimit(1)
-        }
-        .foregroundStyle(type.colors.primary)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .background(type.colors.primary.opacity(0.12), in: Capsule())
+    var detail: String {
+        let rest = metrics.dropFirst().map { "\($0.label) \($0.value)" }
+        return rest.isEmpty ? headline ?? "" : rest.joined(separator: " • ")
     }
 }
 

@@ -3,7 +3,7 @@ import SwiftUI
 struct NpmProxyHostCard: View {
     let proxyHost: NpmProxyHost
     let npmColor: Color
-    let t: Translations
+    let t: TranslationCatalog
 
     private var statusColor: Color {
         if !proxyHost.isEnabled { return AppTheme.textMuted }

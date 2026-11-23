@@ -936,7 +936,6 @@ struct Translations {
     let npmSaveSuccess: String
     let npmDeleteSuccess: String
     let npmRenewSuccess: String
-    let loginHintNpm2FAWarning: String
 
     // Units
     let unitDays: String
@@ -991,12 +990,10 @@ struct Translations {
     let settingsAppIconClearLight: String
     let settingsAppIconClearDark: String
     let settingsAppIconTintedLight: String
-    let settingsAppIconTintedDark: String
+    let settingsAppIconGreen: String
     let settingsHomeCyberpunkCards: String
     let settingsHomeCyberpunkCardsDesc: String
     let settingsContacts: String
-    let settingsContactTelegram: String
-    let settingsContactReddit: String
     let settingsContactLinuxUpdate: String
     let settingsHideService: String
     let settingsShowService: String
@@ -1209,6 +1206,114 @@ struct Translations {
     let errorHttp: String
     let errorDecoding: String
     let errorUnauthorized: String
+    let errorTwoFactorRequired: String
+    let errorForwardAuthRequired: String
+    let errorForwardAuthInsecure: String
+    let twoFactorTitle: String
+    let twoFactorCode: String
+    let twoFactorAppMessage: String
+    let twoFactorEmailMessage: String
+    let twoFactorVerify: String
+    let twoFactorResend: String
+    let statusNeedsSignIn: String
+    let errorTwoFactorInvalid: String
+    let oauthSignIn: String
+    let oauthHint: String
+    let oauthChooseProvider: String
+    let oauthUnavailable: String
+    let oauthInvalidReply: String
+    let oauthDenied: String
+    let oauthRejected: String
+    let oauthEmailNeeded: String
+    let serviceScrutinyDesc: String
+    let loginHintScrutiny: String
+    let scrutinyNoDrives: String
+    let scrutinyTestNotification: String
+    let scrutinyTestSent: String
+    let scrutinyHealthyDrives: String
+    let scrutinyFailedDrives: String
+    let scrutinyHottest: String
+    let scrutinyDrives: String
+    let scrutinyArchived: String
+    let scrutinyModel: String
+    let scrutinySerial: String
+    let scrutinyFirmware: String
+    let scrutinyCapacity: String
+    let scrutinyTemperature: String
+    let scrutinyPoweredOn: String
+    let scrutinyPowerCycles: String
+    let scrutinyLastReport: String
+    let scrutinyWeek: String
+    let scrutinyMonth: String
+    let scrutinyYear: String
+    let scrutinyAttributes: String
+    let scrutinyAllPassed: String
+    let scrutinyPassed: String
+    let scrutinyFailed: String
+    let scrutinyUnknown: String
+    let scrutinyCritical: String
+    let scrutinyArchive: String
+    let scrutinyUnarchive: String
+    let scrutinyArchiveConfirm: String
+    let scrutinyActionFailed: String
+    let serviceDockgeDesc: String
+    let loginHintDockge: String
+    let dockgeRunningStacks: String
+    let dockgeNoStacks: String
+    let dockgeStacks: String
+    let dockgeServices: String
+    let dockgeNotManaged: String
+    let dockgeStart: String
+    let dockgeStop: String
+    let dockgeRestart: String
+    let dockgeUpdate: String
+    let dockgeStopConfirm: String
+    let dockgeUpdateConfirm: String
+    let dockgeWorking: String
+    let dockgeUnconfirmed: String
+    let dockgeAgentOffline: String
+    let dockgeNeedsSetup: String
+    let dockgeStatusRunning: String
+    let dockgeStatusExited: String
+    let dockgeStatusInactive: String
+    let dockgeStatusUnknown: String
+    let errorSignInRequired: String
+    let forwardAuthTitle: String
+    let forwardAuthDesc: String
+    let forwardAuthSignIn: String
+    let forwardAuthConnected: String
+    let forwardAuthSignInAgain: String
+    let forwardAuthConnectFirst: String
+    let forwardAuthNotNeeded: String
+    let forwardAuthBlocked: String
+    let forwardAuthInsecure: String
+    let errorHtmlResponse: String
+    let forwardAuthUseHttps: String
+    let forwardAuthMethodBrowser: String
+    let forwardAuthMethodHeaders: String
+    let forwardAuthHeaderName: String
+    let forwardAuthHeaderValue: String
+    let forwardAuthAddHeader: String
+    let forwardAuthHeaderInvalid: String
+    let forwardAuthHeadersBlocked: String
+    let forwardAuthTestHeaders: String
+    let forwardAuthFallback: String
+    let forwardAuthFallbackNotNeeded: String
+    let forwardAuthSignOut: String
+    let forwardAuthSignOutMessage: String
+    let forwardAuthTurnOff: String
+    let forwardAuthTurnOffTitle: String
+    let forwardAuthTurnOffMessage: String
+    let forwardAuthSkipLogin: String
+    let forwardAuthSkipLoginDesc: String
+    let forwardAuthNeedsLogin: String
+    let forwardAuthOffer: String
+    let forwardAuthOfferButton: String
+    let forwardAuthSettingsTitle: String
+    let forwardAuthShare: String
+    let forwardAuthShareDesc: String
+    let forwardAuthSignOutAll: String
+    let forwardAuthSignOutAllMessage: String
     let errorBothFailed: String
     let errorUnknown: String
     let errorAtsRequiresSecure: String

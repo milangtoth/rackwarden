@@ -131,8 +131,9 @@ final class ServicesStoreTests: XCTestCase {
             token: "token-secondary"
         )
 
-        await store.saveInstance(first)
-        await store.saveInstance(second)
+        // No live checks: their result would race with the assertions below.
+        await store.saveInstance(first, triggerReachabilityCheck: false)
+        await store.saveInstance(second, triggerReachabilityCheck: false)
 
         NotificationCenter.default.post(
             name: .serviceUnauthorized,
@@ -147,6 +148,20 @@ final class ServicesStoreTests: XCTestCase {
         XCTAssertEqual(store.instances(for: .gitea).count, 2)
         XCTAssertEqual(store.reachability(for: first.id), false)
         XCTAssertNil(store.reachability(for: second.id))
+    }
+
+    func testSavedOneTimeCodeIsRemoved() async {
+        var instance = ServiceInstance(type: .proxmox, label: "pve", url: "https://pve.invalid", proxmoxOTP: "123456")
+        let store = ServicesStore()
+        await store.saveInstance(instance, triggerReachabilityCheck: false)
+        XCTAssertNil(store.instance(id: instance.id)?.proxmoxOTP)
+
+        instance.label = "old"
+        KeychainService.saveServiceState(ServiceStateV2(instances: [instance], preferredInstanceIdByType: [:]))
+        let reloaded = ServicesStore()
+        await reloaded.initialize()
+        reloaded.stopPeriodicHealthChecks()
+        XCTAssertNil(KeychainService.loadServiceState().instances.first?.proxmoxOTP)
     }
 
     func testServiceConnectionURLCleaning() {

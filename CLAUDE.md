@@ -1,4 +1,4 @@
-# CLAUDE.md - Homelab
+# CLAUDE.md - Rackwarden
 
 Claude should follow the repository workflow documented in `AGENTS.md`.
 

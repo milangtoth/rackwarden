@@ -101,6 +101,7 @@ struct LidarrDashboard: View {
                     status: result.status.map(localizedSearchStatus),
                     posterURL: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance),
                     artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance), instance: serviceInstance),
+                    artworkInstance: serviceInstance,
                     detailsURL: result.detailsURL,
                     details: result.details,
                     canRequest: result.requestForeignArtistId != nil
@@ -422,6 +423,7 @@ struct LidarrDashboard: View {
                                     status: result.status.map(localizedSearchStatus),
                                     posterURL: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance),
                                     artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance), instance: serviceInstance),
+                                    artworkInstance: serviceInstance,
                                     detailsURL: result.detailsURL,
                                     details: result.details,
                                     canRequest: result.requestForeignArtistId != nil
@@ -533,6 +535,7 @@ struct LidarrDashboard: View {
             status: album.monitored == true ? arr.searchStatusMonitored : nil,
             posterURL: resolvedServiceArtworkURL(album.coverUrl, instance: serviceInstance),
             artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(album.coverUrl, instance: serviceInstance), instance: serviceInstance),
+            artworkInstance: serviceInstance,
             detailsURL: nil,
             details: details,
             canRequest: false

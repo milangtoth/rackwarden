@@ -33,6 +33,8 @@ private final class ServiceClientManager {
     private var truenasClients: [UUID: TrueNASAPIClient] = [:]
     private var pterodactylClients: [UUID: PterodactylAPIClient] = [:]
     private var calagopusClients: [UUID: CalagopusAPIClient] = [:]
+    private var scrutinyClients: [UUID: ScrutinyAPIClient] = [:]
+    private var dockgeClients: [UUID: DockgeAPIClient] = [:]
 
     func portainerClient(id: UUID) -> PortainerAPIClient {
         if let client = portainerClients[id] {
@@ -285,6 +287,24 @@ private final class ServiceClientManager {
         return client
     }
 
+    func scrutinyClient(id: UUID) -> ScrutinyAPIClient {
+        if let client = scrutinyClients[id] {
+            return client
+        }
+        let client = ScrutinyAPIClient(instanceId: id)
+        scrutinyClients[id] = client
+        return client
+    }
+
+    func dockgeClient(id: UUID) -> DockgeAPIClient {
+        if let client = dockgeClients[id] {
+            return client
+        }
+        let client = DockgeAPIClient(instanceId: id)
+        dockgeClients[id] = client
+        return client
+    }
+
     func calagopusClient(id: UUID) -> CalagopusAPIClient {
         if let client = calagopusClients[id] {
             return client
@@ -363,6 +383,10 @@ private final class ServiceClientManager {
             pterodactylClients.removeValue(forKey: id)
         case .calagopus:
             calagopusClients.removeValue(forKey: id)
+        case .scrutiny:
+            scrutinyClients.removeValue(forKey: id)
+        case .dockge:
+            dockgeClients.removeValue(forKey: id)
         case .jellyseerr, .prowlarr, .bazarr, .gluetun, .flaresolverr:
             genericClients.removeValue(forKey: id)
         }
@@ -400,6 +424,8 @@ private final class ServiceClientManager {
         truenasClients = truenasClients.filter { knownInstanceIds.contains($0.key) }
         pterodactylClients = pterodactylClients.filter { knownInstanceIds.contains($0.key) }
         calagopusClients = calagopusClients.filter { knownInstanceIds.contains($0.key) }
+        scrutinyClients = scrutinyClients.filter { knownInstanceIds.contains($0.key) }
+        dockgeClients = dockgeClients.filter { knownInstanceIds.contains($0.key) }
         genericClients = genericClients.filter { knownInstanceIds.contains($0.key) }
     }
 }
@@ -413,9 +439,14 @@ final class ServicesStore {
     private(set) var isReady: Bool = false
     private(set) var reachabilityByInstanceId: [UUID: Bool?] = [:]
     private(set) var pingingByInstanceId: [UUID: Bool] = [:]
+    /// Instances whose session can only be renewed by the user, for example with a 2FA code.
+    private(set) var needsSignInIds: Set<UUID> = []
+    /// Instances whose proxy session ended, with the address that asked for a sign-in.
+    private(set) var expiredProxyOrigins: [UUID: AccessOrigin] = [:]
     private(set) var isTailscaleConnected: Bool = false
 
     private var lastReachabilityCheck: Date?
+    private var reauthenticatingIds: Set<UUID> = []
     private var healthCheckTask: Task<Void, Never>?
     private let clientManager = ServiceClientManager()
 
@@ -441,6 +472,18 @@ final class ServicesStore {
             guard let instanceId = notification.userInfo?["instanceId"] as? UUID else { return }
             Task { @MainActor in
                 await self?.handleUnauthorized(instanceId: instanceId)
+            }
+        }
+        NotificationCenter.default.addObserver(
+            forName: .forwardAuthExpired,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let instanceId = notification.userInfo?["instanceId"] as? UUID,
+                  let profile = notification.userInfo?["profile"] as? AccessProfile,
+                  let origin = notification.userInfo?["origin"] as? AccessOrigin else { return }
+            Task { @MainActor in
+                self?.markProxyExpired(instanceId, origin: origin, profile: profile)
             }
         }
     }
@@ -469,6 +512,9 @@ final class ServicesStore {
 
         isReady = true
 
+        Task {
+            await ForwardAuthWebData.removeOrphans(keeping: Set(instancesById.keys))
+        }
         Task {
             await checkAllReachability()
             await checkTailscale()
@@ -553,6 +599,8 @@ final class ServicesStore {
         let normalized = normalizedInstance(instance)
         let previous = instancesById[normalized.id]
         instancesById[normalized.id] = normalized
+        needsSignInIds.remove(normalized.id)
+        expiredProxyOrigins[normalized.id] = nil
 
         if previous?.type != normalized.type {
             repairPreferredInstance(for: previous?.type)
@@ -574,7 +622,11 @@ final class ServicesStore {
         guard let removed = instancesById.removeValue(forKey: id) else { return }
         reachabilityByInstanceId.removeValue(forKey: id)
         pingingByInstanceId.removeValue(forKey: id)
+        needsSignInIds.remove(id)
         clientManager.removeClient(id: id, type: removed.type)
+        expiredProxyOrigins[id] = nil
+        AccessProfileStore.shared.set(nil, for: id)
+        Task { await ForwardAuthWebData.remove(id, urls: [removed.url, removed.fallbackUrl]) }
         repairPreferredInstance(for: removed.type)
         persistState()
     }
@@ -742,6 +794,16 @@ final class ServicesStore {
         return clientManager.pterodactylClient(id: instance.id)
     }
 
+    func scrutinyClient(instanceId: UUID) async -> ScrutinyAPIClient? {
+        guard let instance = instancesById[instanceId], instance.type == .scrutiny else { return nil }
+        return clientManager.scrutinyClient(id: instance.id)
+    }
+
+    func dockgeClient(instanceId: UUID) async -> DockgeAPIClient? {
+        guard let instance = instancesById[instanceId], instance.type == .dockge else { return nil }
+        return clientManager.dockgeClient(id: instance.id)
+    }
+
     func calagopusClient(instanceId: UUID) async -> CalagopusAPIClient? {
         guard let instance = instancesById[instanceId], instance.type == .calagopus else { return nil }
         return clientManager.calagopusClient(id: instance.id)
@@ -822,6 +884,10 @@ final class ServicesStore {
             ok = await clientManager.pterodactylClient(id: instanceId).ping()
         case .calagopus:
             ok = await clientManager.calagopusClient(id: instanceId).ping()
+        case .scrutiny:
+            ok = await clientManager.scrutinyClient(id: instanceId).ping()
+        case .dockge:
+            ok = await clientManager.dockgeClient(id: instanceId).ping()
         case .jellyseerr, .prowlarr, .bazarr, .gluetun, .flaresolverr:
             ok = await clientManager.genericClient(id: instanceId, type: instance.type).ping()
         }
@@ -941,7 +1007,10 @@ final class ServicesStore {
     }
 
     private func handleUnauthorized(instanceId: UUID) async {
-        guard let current = instancesById[instanceId] else { return }
+        guard let current = instancesById[instanceId],
+              !needsSignInIds.contains(instanceId),
+              reauthenticatingIds.insert(instanceId).inserted else { return }
+        defer { reauthenticatingIds.remove(instanceId) }
 
         if current.type == .pihole,
            let password = current.piHoleStoredSecret,
@@ -974,7 +1043,21 @@ final class ServicesStore {
                 await configureClient(for: refreshed, refreshPiHoleAuth: false)
                 return
             } catch {
+                if error.needsUserSignIn {
+                    markNeedsSignIn(instanceId, rejectedToken: current.token)
+                    return
+                }
                 // Fall through to marking unreachable.
+            }
+        }
+
+        // Beszel without a password (OAuth): renew the session or ask the user to sign in again.
+        if current.type == .beszel, current.password?.isEmpty ?? true {
+            let client = clientManager.beszelClient(id: instanceId)
+            if await client.checkSession() { return }
+            if await client.isSignInRequired {
+                markNeedsSignIn(instanceId, rejectedToken: current.token)
+                return
             }
         }
 
@@ -992,6 +1075,10 @@ final class ServicesStore {
                 await configureClient(for: refreshed, refreshPiHoleAuth: false)
                 return
             } catch {
+                if error.needsUserSignIn {
+                    markNeedsSignIn(instanceId, rejectedToken: current.token)
+                    return
+                }
                 // Fall through to marking unreachable.
             }
         }
@@ -1015,6 +1102,68 @@ final class ServicesStore {
         }
     }
 
+    func needsSignIn(_ instanceId: UUID) -> Bool {
+        needsSignInIds.contains(instanceId) || expiredProxyURL(instanceId) != nil
+    }
+
+    /// The address to sign in to again, unless the service is still reachable another way.
+    func expiredProxyURL(_ instanceId: UUID) -> URL? {
+        guard let instance = instancesById[instanceId], let origin = expiredProxyOrigins[instanceId],
+              reachability(for: instanceId) != true else { return nil }
+        return [instance.url, instance.fallbackUrl].compactMap { $0 }
+            .first { AccessOrigin(string: $0) == origin }
+            .flatMap { URL(string: $0) }
+    }
+
+    /// Ignores late failures of credentials the user has already replaced.
+    private func markProxyExpired(_ instanceId: UUID, origin: AccessOrigin, profile: AccessProfile) {
+        guard instancesById[instanceId] != nil, expiredProxyOrigins[instanceId] == nil,
+              AccessProfileStore.shared.profile(for: instanceId) == profile else { return }
+        expiredProxyOrigins[instanceId] = origin
+        Task { await checkReachability(for: instanceId) }
+    }
+
+    /// Pass `nil` when the proxy no longer asks for a sign-in.
+    func renewProxySession(_ instanceId: UUID, access: OriginAccess?) async {
+        if let access { AccessProfileStore.shared.update(access, for: instanceId) }
+        expiredProxyOrigins[instanceId] = nil
+        await checkReachability(for: instanceId)
+    }
+
+    func signOutOfProxy(_ instanceId: UUID) async {
+        AccessProfileStore.shared.signOut(instanceId)
+        guard let instance = instancesById[instanceId] else { return }
+        await ForwardAuthWebData.remove(instanceId, urls: [instance.url, instance.fallbackUrl])
+        reachabilityByInstanceId[instanceId] = nil
+        await checkReachability(for: instance.id)
+    }
+
+    /// Drops browser data the current sharing setting no longer uses. Services stay signed in.
+    func forwardAuthSharingChanged() async {
+        await ForwardAuthWebData.removeOrphans(keeping: Set(instancesById.keys))
+    }
+
+    /// Forgets every proxy sign-in on this device. Custom headers stay.
+    func signOutOfAllProxies() async {
+        await ForwardAuthWebData.removeAll()
+        let ids = allInstances.map(\.id).filter {
+            guard let profile = AccessProfileStore.shared.profile(for: $0) else { return false }
+            return profile.isEnabled && profile.method == .browser
+        }
+        for id in ids {
+            AccessProfileStore.shared.signOut(id)
+            reachabilityByInstanceId[id] = nil
+        }
+        await withTaskGroup(of: Void.self) { group in
+            for id in ids { group.addTask { await self.checkReachability(for: id) } }
+        }
+    }
+
+    /// Ignores late failures of a session the user has already replaced.
+    private func markNeedsSignIn(_ instanceId: UUID, rejectedToken: String) {
+        guard instancesById[instanceId]?.token == rejectedToken else { return }
+        needsSignInIds.insert(instanceId)
+    }
 
     private func configureClient(for instance: ServiceInstance, refreshPiHoleAuth: Bool) async {
         switch instance.type {
@@ -1089,6 +1238,11 @@ final class ServicesStore {
             let client = clientManager.beszelClient(id: instance.id)
             await client.configure(url: instance.url, token: instance.token, fallbackUrl: instance.fallbackUrl, email: instance.username, password: instance.password, allowSelfSigned: instance.allowSelfSigned)
             let instanceId = instance.id
+            await client.setSignInRequiredCallback { [weak self] rejectedToken in
+                Task { @MainActor in
+                    self?.markNeedsSignIn(instanceId, rejectedToken: rejectedToken)
+                }
+            }
             await client.setTokenRefreshCallback { [weak self] newToken in
                 Task { @MainActor in
                     guard let self, var current = self.instancesById[instanceId] else { return }
@@ -1190,6 +1344,11 @@ final class ServicesStore {
                 password: instance.password
             , allowSelfSigned: instance.allowSelfSigned)
             let instanceId = instance.id
+            await client.setSignInRequiredCallback { [weak self] rejectedToken in
+                Task { @MainActor in
+                    self?.markNeedsSignIn(instanceId, rejectedToken: rejectedToken)
+                }
+            }
             await client.setTokenRefreshCallback { [weak self] newToken in
                 Task { @MainActor in
                     guard let self, var current = self.instancesById[instanceId] else { return }
@@ -1289,6 +1448,24 @@ final class ServicesStore {
                 allowSelfSigned: instance.allowSelfSigned
             )
 
+        case .scrutiny:
+            await clientManager.scrutinyClient(id: instance.id).configure(
+                url: instance.url, fallbackUrl: instance.fallbackUrl, allowSelfSigned: instance.allowSelfSigned
+            )
+
+        case .dockge:
+            let client = clientManager.dockgeClient(id: instance.id)
+            await client.configure(
+                url: instance.url, token: instance.token,
+                fallbackUrl: instance.fallbackUrl, allowSelfSigned: instance.allowSelfSigned
+            )
+            let instanceId = instance.id
+            await client.setSignInRequiredCallback { [weak self] rejectedToken in
+                Task { @MainActor in
+                    self?.markNeedsSignIn(instanceId, rejectedToken: rejectedToken)
+                }
+            }
+
         case .calagopus:
             let client = clientManager.calagopusClient(id: instance.id)
             await client.configure(
@@ -1309,7 +1486,6 @@ final class ServicesStore {
                 apiTokenString: authMode == .apiToken ? instance.apiKey : nil,
                 username: instance.username,
                 password: instance.password,
-                otp: instance.proxmoxOTP,
                 realm: instance.proxmoxRealm,
                 allowSelfSigned: instance.allowSelfSigned
             )
@@ -1347,7 +1523,10 @@ final class ServicesStore {
         return normalized.isEmpty ? nil : normalized
     }
 
-    private func normalizedInstance(_ instance: ServiceInstance) -> ServiceInstance {
+    private func normalizedInstance(_ original: ServiceInstance) -> ServiceInstance {
+        // One-time codes saved by earlier versions are useless and must not be kept.
+        var instance = original
+        instance.proxmoxOTP = nil
         let normalizedUrl = normalizeServiceURL(instance.url, type: instance.type)
         let normalizedFallback = normalizeOptionalURL(instance.fallbackUrl, type: instance.type)
         if normalizedUrl == instance.url && normalizedFallback == instance.fallbackUrl {

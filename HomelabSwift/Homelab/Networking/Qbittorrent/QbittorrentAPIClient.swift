@@ -43,7 +43,8 @@ actor QbittorrentAPIClient {
     func ping() async -> Bool {
         guard !baseURL.isEmpty else { return false }
         let path = "/api/v2/app/version"
-        if !sid.isEmpty {
+        // Without credentials, the service trusts the proxy in front of it.
+        if !sid.isEmpty || !canRefreshSession {
             let primary = await engine.pingURL(baseURL + path, extraHeaders: authHeaders())
             if primary { return true }
             if !fallbackURL.isEmpty {
@@ -204,9 +205,7 @@ actor QbittorrentAPIClient {
     }
 
     private func authHeaders() -> [String: String] {
-        return [
-            "Cookie": "SID=\(self.sid)"
-        ]
+        sid.isEmpty ? [:] : ["Cookie": "SID=\(sid)"]
     }
 
     private func formHeaders() -> [String: String] {
@@ -257,7 +256,7 @@ actor QbittorrentAPIClient {
         ]
         req.httpBody = components.query?.data(using: .utf8)
 
-        let session = BaseNetworkEngine.authSession(allowSelfSigned: storedAllowSelfSigned, timeout: 10)
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 10)
 
         AppLogger.shared.network("--> POST \(fullUrl.absoluteString)", source: "qBittorrent")
         let (data, response) = try await session.data(for: req)

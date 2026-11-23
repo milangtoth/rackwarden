@@ -101,6 +101,7 @@ struct SonarrDashboard: View {
                     status: result.status.map(localizedSearchStatus),
                     posterURL: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance),
                     artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance), instance: serviceInstance),
+                    artworkInstance: serviceInstance,
                     detailsURL: result.detailsURL,
                     details: result.details,
                     canRequest: result.requestTvdbId != nil
@@ -422,6 +423,7 @@ struct SonarrDashboard: View {
                                     status: result.status.map(localizedSearchStatus),
                                     posterURL: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance),
                                     artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(result.posterURL, instance: serviceInstance), instance: serviceInstance),
+                                    artworkInstance: serviceInstance,
                                     detailsURL: result.detailsURL,
                                     details: result.details,
                                     canRequest: result.requestTvdbId != nil
@@ -540,6 +542,7 @@ struct SonarrDashboard: View {
             status: fullyDownloaded ? arr.searchStatusInLibrary : nil,
             posterURL: resolvedServiceArtworkURL(series.posterUrl, instance: serviceInstance),
             artworkHeaders: serviceArtworkHeaders(for: resolvedServiceArtworkURL(series.posterUrl, instance: serviceInstance), instance: serviceInstance),
+            artworkInstance: serviceInstance,
             detailsURL: series.tvdbId.map { "https://thetvdb.com/dereferrer/series/\($0)" },
             details: details,
             canRequest: false

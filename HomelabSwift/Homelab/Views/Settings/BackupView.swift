@@ -484,6 +484,8 @@ struct BackupView: View {
         case .truenas: return ServiceType.truenas.displayName
         case .pterodactyl: return ServiceType.pterodactyl.displayName
         case .calagopus: return ServiceType.calagopus.displayName
+        case .scrutiny: return ServiceType.scrutiny.displayName
+        case .dockge: return ServiceType.dockge.displayName
         }
     }
 

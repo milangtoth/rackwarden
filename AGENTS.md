@@ -1,6 +1,6 @@
-# AGENTS.md - Homelab
+# AGENTS.md - Rackwarden
 
-This repository is the single working copy for Homelab development.
+This repository is the single working copy for Rackwarden development.
 
 ## Repository Flow
 
@@ -26,11 +26,11 @@ This repository is the single working copy for Homelab development.
   - `docs: ...`
   - `ci: ...`
   - `chore: ...`
-- For release-bound changes, update both platform versions together:
+- Platforms can release separately (v2.0.0 is iOS first). Update the version of each platform being released:
   - Android: `HomelabAndroid/app/build.gradle.kts`
   - iOS: `HomelabSwift/Homelab/Info.plist`
-- Keep Android `versionCode` and iOS `CFBundleVersion` aligned.
-- Keep Android `versionName` and iOS `CFBundleShortVersionString` aligned.
+- When both platforms ship in one release, keep Android `versionCode`/`versionName` aligned with iOS `CFBundleVersion`/`CFBundleShortVersionString`.
+- Never commit a development team; set it in the gitignored `HomelabSwift/Config/Signing.xcconfig`.
 - Do not commit generated release binaries (`.ipa`, `.apk`, `.aab`) unless explicitly requested.
 
 ## Verification Policy
@@ -96,8 +96,8 @@ If the exact simulator is unavailable, list devices with `xcrun simctl list devi
 ## Release Flow
 
 - Release builds are manual unless signing automation is explicitly added later.
-- The user provides the final signed `Homelab.ipa` and `Homelab.apk`.
-- Create a GitHub release with tag `vX.Y.Z` and upload both assets.
+- The user provides the final signed `Homelab.ipa` and/or `Homelab.apk`.
+- Create a GitHub release with tag `vX.Y.Z` and upload the assets for each platform being released.
 - The `Update AltStore Source` workflow updates `apps.json` and `app-version.json`.
 - After the workflow succeeds, pull `origin/main`.
 - Push `main` to `gitea` only as a mirror if desired.
@@ -107,7 +107,7 @@ If the exact simulator is unavailable, list devices with `xcrun simctl list devi
 - Do not manually edit `apps.json` or `app-version.json` for normal releases.
 - The release workflow extracts iOS build metadata from the uploaded IPA.
 - Always verify after a release:
-  - `app-version.json.latest`
+  - `app-version.json`: `ios_latest` (iOS) and `latest` (Android)
   - `apps.json` latest version entry
   - IPA/APK URLs point to the new release
   - GitHub Actions run status is `success`

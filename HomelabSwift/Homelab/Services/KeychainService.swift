@@ -5,6 +5,7 @@ enum KeychainService {
     private static let service = "com.homelab.homelab.services"
     private static let legacyConnectionsAccount = "homelab_user"
     private static let serviceStateV2Account = "homelab_service_state_v2"
+    private static let accessProfilesAccount = "homelab_access_profiles_v1"
     private static let pinAccount = "homelab_pin"
     nonisolated(unsafe) static var backend: any KeychainBackend = SecurityKeychainBackend()
 
@@ -40,7 +41,26 @@ enum KeychainService {
         return migratedState
     }
 
+    // MARK: - Access Profiles
+
+    static func saveAccessProfiles(_ profiles: [UUID: AccessProfile]) {
+        guard !profiles.isEmpty else {
+            backend.delete(service: service, account: accessProfilesAccount)
+            return
+        }
+        guard let data = try? JSONEncoder().encode(profiles) else { return }
+        backend.save(data: data, service: service, account: accessProfilesAccount)
+    }
+
+    static func loadAccessProfiles() -> [UUID: AccessProfile] {
+        guard let data = backend.load(service: service, account: accessProfilesAccount),
+              let profiles = try? JSONDecoder().decode([UUID: AccessProfile].self, from: data)
+        else { return [:] }
+        return profiles
+    }
+
     static func deleteAll() {
+        backend.delete(service: service, account: accessProfilesAccount)
         backend.delete(service: service, account: serviceStateV2Account)
         backend.delete(service: service, account: legacyConnectionsAccount)
     }

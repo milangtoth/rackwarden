@@ -106,7 +106,7 @@ final class BackupManager {
         guard !typesToReplace.isEmpty else { return .success(count: 0) }
 
         // MARK: - Phase 1: Validate all entries before touching the store
-        var instancesToImport: [(type: ServiceType, instance: ServiceInstance, isPreferred: Bool)] = []
+        var instancesToImport: [(type: ServiceType, instance: ServiceInstance, isPreferred: Bool, profile: AccessProfile?)] = []
         var validationErrors: [String] = []
 
         for type in typesToReplace.sorted(by: { $0.rawValue < $1.rawValue }) {
@@ -116,7 +116,7 @@ final class BackupManager {
                     validationErrors.append("Invalid service entry for \(type.displayName)")
                     continue
                 }
-                instancesToImport.append((type: type, instance: instance, isPreferred: entry.isPreferred))
+                instancesToImport.append((type: type, instance: instance, isPreferred: entry.isPreferred, profile: entry.accessProfile))
             }
         }
 
@@ -141,6 +141,10 @@ final class BackupManager {
         var preferredIdsByType: [ServiceType: UUID] = [:]
 
         for item in instancesToImport {
+            AccessProfileStore.shared.set(
+                item.profile?.withoutCookies.limited(to: [item.instance.url, item.instance.fallbackUrl]),
+                for: item.instance.id
+            )
             await servicesStore.saveInstance(item.instance, triggerReachabilityCheck: false)
             importedCount += 1
             if item.isPreferred {
@@ -172,7 +176,10 @@ final class BackupManager {
 
         let entries: [BackupServiceEntry] = instancesToExport.map { instance in
             let isPreferred = preferredIds[instance.type] == instance.id
-            return instance.toBackupEntry(isPreferred: isPreferred)
+            return instance.toBackupEntry(
+                isPreferred: isPreferred,
+                accessProfile: AccessProfileStore.shared.profile(for: instance.id)
+            )
         }
 
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"

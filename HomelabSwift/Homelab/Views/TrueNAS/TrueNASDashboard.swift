@@ -357,24 +357,7 @@ struct TrueNASDashboard: View {
                 .glassCard(tint: AppTheme.running.opacity(0.06))
             } else {
                 ForEach(alerts.prefix(8)) { alert in
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            statusPill(alert.level, color: alertColor(alert.level))
-                            Spacer()
-                            if let createdAt = alert.createdAt {
-                                Text(createdAt)
-                                    .font(.caption2)
-                                    .foregroundStyle(AppTheme.textMuted)
-                                    .lineLimit(1)
-                            }
-                        }
-                        Text(alert.message)
-                            .font(.caption)
-                            .foregroundStyle(AppTheme.textSecondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(14)
-                    .glassCard(tint: alertColor(alert.level).opacity(0.06))
+                    TrueNASAlertCard(alert: alert, color: alertColor(alert.level))
                 }
             }
         }
@@ -483,12 +466,69 @@ struct TrueNASDashboard: View {
             return
         }
 
-        state = .loading
+        // Replacing the scroll view while it refreshes would cancel the refresh.
+        let instanceId = selectedInstanceId
+        if snapshot == nil { state = .loading }
         do {
-            snapshot = try await client.getDashboardSnapshot()
+            let loaded = try await client.getDashboardSnapshot()
+            guard instanceId == selectedInstanceId else { return }
+            snapshot = loaded
             state = .loaded(())
         } catch {
+            guard !Task.isCancelled, instanceId == selectedInstanceId else { return }
             state = .error(error as? APIError ?? .networkError(error))
         }
+    }
+}
+
+struct TrueNASAlertCard: View {
+    let alert: TrueNASAlert
+    let color: Color
+
+    var body: some View {
+        let content = TrueNASAlertText(html: alert.message)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(alert.level.uppercased())
+                    .font(.caption2.bold())
+                    .foregroundStyle(color)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 5)
+                    .background(color.opacity(0.12), in: Capsule())
+                Spacer()
+                if let createdAt = alert.createdAt {
+                    Text(createdAt)
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.textMuted)
+                        .lineLimit(1)
+                }
+            }
+            if !content.text.isEmpty {
+                Text(content.text)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if !content.readings.isEmpty {
+                VStack(spacing: 8) {
+                    ForEach(content.readings, id: \.self) { reading in
+                        Divider()
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(reading.label)
+                                .font(.caption)
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            Text(reading.value)
+                                .font(.caption.weight(.semibold))
+                                .monospacedDigit()
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .glassCard(tint: color.opacity(0.06))
     }
 }

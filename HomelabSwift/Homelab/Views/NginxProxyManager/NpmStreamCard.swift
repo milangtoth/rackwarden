@@ -3,7 +3,7 @@ import SwiftUI
 struct NpmStreamCard: View {
     let stream: NpmStream
     let npmColor: Color
-    let t: Translations
+    let t: TranslationCatalog
 
     private var statusColor: Color {
         if !stream.isEnabled { return AppTheme.textMuted }

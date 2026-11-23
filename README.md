@@ -1,335 +1,241 @@
-# 🏠 Rackwarden
+<div align="center">
 
-**Native iOS and Android app for monitoring and managing your self-hosted services from one place.**
+<img src="media-docs/readme/app-icon.png" width="128" alt="Rackwarden app icon: a mint castle tower built from server racks">
 
-[![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg?logo=swift)](https://swift.org)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.1-purple.svg?logo=kotlin)](https://kotlinlang.org)
-[![Platform](https://img.shields.io/badge/Platform-iOS%2026%2B-blue.svg)](https://developer.apple.com/ios/)
-[![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-green.svg)](https://developer.android.com)
-[![Made with SwiftUI](https://img.shields.io/badge/Made%20with-SwiftUI-blue.svg?logo=swift)](https://developer.apple.com/xcode/swiftui/)
-[![Made with Jetpack Compose](https://img.shields.io/badge/Made%20with-Jetpack%20Compose-green.svg?logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
+# Rackwarden
 
-Rackwarden ships two dedicated apps, one for iOS and one for Android, designed around the same product idea while respecting each platform's native UI patterns.
+**Your homelab, guarded and organized.**<br>
+A native app to watch and manage your self-hosted services from one place,<br>
+even when they sit behind a login proxy.
 
-> Originally created by [JohnnWi](https://github.com/JohnnWi/homelab-project) as Homelab Dashboard, whose repository is now archived. Rackwarden is an independent continuation and is not affiliated with or endorsed by the original author.
+[![iOS 26+](https://img.shields.io/badge/iOS-26%2B-000000?logo=apple&logoColor=white)](#ios)
+[![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3DDC84?logo=android&logoColor=white)](#android)
+[![SwiftUI](https://img.shields.io/badge/SwiftUI-Swift%206-F05138?logo=swift&logoColor=white)](HomelabSwift)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Kotlin-7F52FF?logo=kotlin&logoColor=white)](HomelabAndroid)
+[![36 services](https://img.shields.io/badge/services-36-12D6B3)](#services)
+[![Apache 2.0 License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-> **Status:** Rackwarden has not published a release yet. The renaming is in progress, so the apps, screenshots, and project folders still use the Homelab name. To try it today, [build from source](#-getting-started).
-
-> **Disclaimer:** This software is provided as-is, without warranties. See the [license](LICENSE) for details.
-
-<table align="center">
-  <tr>
-    <th>iOS Dashboard</th>
-    <th>Android Dashboard</th>
-  </tr>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/Dashboard.png" width="230" /></td>
-    <td align="center"><img src="media-docs/foto-android/Dashboard.jpg" width="230" /></td>
-  </tr>
-</table>
-
----
-
-## 🚀 Highlights
-
-- **34 integrated service dashboards** across infrastructure, networking, media automation, observability, and developer tooling.
-- **One app, many instances**: add multiple instances of the same service and switch between them without friction.
-- **Fully native on both platforms**: SwiftUI on iOS, Jetpack Compose on Android.
-- **Practical daily-use features**: encrypted backup and restore, biometric unlock, multilingual UI, alternate icons, and fast in-app update prompts.
-- **Utilities beyond services**: built-in bookmarks plus quick Tailscale launch support for remote access workflows.
-
----
-
-## 🧩 Integrated Services
-
-### Core Infrastructure
-
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/portainer.png" width="18" style="vertical-align:middle"> **Portainer**: container overview, quick actions, resource usage.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/proxmox.png" width="18" style="vertical-align:middle"> **Proxmox VE**: nodes, guests, storage, networking, backups, and cluster operations.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/truenas-core.png" width="18" style="vertical-align:middle"> <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/truenas-scale.png" width="18" style="vertical-align:middle"> **TrueNAS Scale / Core**: storage, pools, disks, shares, services, and system alerts.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/uptime-kuma.png" width="18" style="vertical-align:middle"> **Uptime Kuma**: monitor status, uptime visibility, and incident tracking.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockhand.png" width="18" style="vertical-align:middle"> **Dockhand**: native container management dashboard.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockmon.png" width="18" style="vertical-align:middle"> **DockMon**: Docker host and container monitoring with logs, restart, and update actions.
-- <img src="HomelabSwift/Homelab/Assets.xcassets/service-komodo.imageset/komodo.png" width="18" style="vertical-align:middle"> **Komodo**: resource, deployment, stack, and server monitoring.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/beszel.png" width="18" style="vertical-align:middle"> **Beszel**: server monitoring across nodes.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/linux-update-dashboard.png" width="18" style="vertical-align:middle"> **Linux Update**: pending package updates across hosts.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/crafty-controller.png" width="18" style="vertical-align:middle"> **Crafty Controller**: game server management dashboard.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/pterodactyl.png" width="18" style="vertical-align:middle"> **Pterodactyl**: game server management panel with power controls, resource stats, and live status visibility.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/calagopus.png" width="18" style="vertical-align:middle"> **Calagopus**: next-generation game server management panel with power controls, uptime, and resource stats.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/gitea.png" width="18" style="vertical-align:middle"> **Gitea / Forgejo**: repositories, activity, and source browsing.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/pangolin.png" width="18" style="vertical-align:middle"> **Pangolin / Newt**: tunnel and peer visibility.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/healthchecks.png" width="18" style="vertical-align:middle"> **Healthchecks**: uptime checks and health status.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/patchmon.png" width="18" style="vertical-align:middle"> **PatchMon**: software update visibility across your stack.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/wakapi.png" width="18" style="vertical-align:middle"> **Wakapi**: coding activity and time tracking stats.
-
-### Networking & DNS
-
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/pi-hole.png" width="18" style="vertical-align:middle"> **Pi-hole**: queries, blocked domains, toggles, timers.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/adguard-home.png" width="18" style="vertical-align:middle"> **AdGuard Home**: filters, rewrites, blocked services, query activity.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/ubiquiti-unifi.png" width="18" style="vertical-align:middle"> **Ubiquiti Network**: gateways, switches, access points, clients, and site visibility.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/technitium.png" width="18" style="vertical-align:middle"> **Technitium DNS**: DNS metrics and health.
-- <img src="HomelabSwift/Homelab/Assets.xcassets/service-maltrail.imageset/icon.png" width="18" style="vertical-align:middle"> **Maltrail**: threat detections, daily findings, and event visibility.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/nginx-proxy-manager.png" width="18" style="vertical-align:middle"> **Nginx Proxy Manager / NPMplus**: proxy hosts, streams, redirects, certificates, access lists.
-
-### Media & Observability
-
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/plex.png" width="18" style="vertical-align:middle"> **Plex**: libraries, sessions, recently added media.
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/jellystat.png" width="18" style="vertical-align:middle"> **Jellystat**: Jellyfin activity, streams, usage insights.
-
-### Servarr Stack
-
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/sonarr.png" width="18" style="vertical-align:middle"> **Sonarr**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/radarr.png" width="18" style="vertical-align:middle"> **Radarr**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/lidarr.png" width="18" style="vertical-align:middle"> **Lidarr**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/prowlarr.png" width="18" style="vertical-align:middle"> **Prowlarr**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/qbittorrent.png" width="18" style="vertical-align:middle"> **qBittorrent**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/jellyseerr.png" width="18" style="vertical-align:middle"> **Jellyseerr**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/bazarr.png" width="18" style="vertical-align:middle"> **Bazarr**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/gluetun.png" width="18" style="vertical-align:middle"> **Gluetun**
-- <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/flaresolverr.png" width="18" style="vertical-align:middle"> **FlareSolverr**
-
-The full Servarr stack is available as a unified media automation dashboard, so downloads, health, requests, VPN status, and indexer state can be checked from one place.
-
----
-
-## 🍎 iOS App
-
-The iOS version is built with **Swift 6** and **SwiftUI** for **iOS 26+**. The interface uses a polished glass-heavy visual language, native navigation, and system integrations such as alternate icons, biometric unlock, and document-based backup import/export.
-
-<table align="center">
-  <tr>
-    <th>Dashboard</th>
-    <th>Servarr</th>
-    <th>Bookmarks</th>
-  </tr>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/Dashboard.png" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-ios/Servarr.png" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9201.PNG" width="180" /></td>
-  </tr>
-</table>
-
-<table align="center">
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9187.PNG" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9193.PNG" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9190.PNG" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9199.PNG" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-ios/plex.PNG" width="120" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Portainer</sub></td>
-    <td align="center"><sub>Beszel</sub></td>
-    <td align="center"><sub>Nginx Proxy</sub></td>
-    <td align="center"><sub>Pi-hole</sub></td>
-    <td align="center"><sub>Plex</sub></td>
-  </tr>
-</table>
-
-<details>
-<summary><b>📸 View all iOS screenshots</b></summary>
 <br>
 
-**Portainer**
 <table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9187.PNG" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9188.PNG" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9189.PNG" width="180" /></td>
-  </tr>
+<tr>
+<td align="center"><img src="media-docs/readme/welcome-dark.png" width="200" alt="Welcome screen with the Rackwarden icon"><br><sub><b>Welcome</b></sub></td>
+<td align="center"><img src="media-docs/readme/home-dark.png" width="200" alt="Home tab with a grid of services"><br><sub><b>Home</b></sub></td>
+<td align="center"><img src="media-docs/readme/servarr-dark.png" width="200" alt="Servarr tab with media services"><br><sub><b>Servarr</b></sub></td>
+<td align="center"><img src="media-docs/readme/settings-dark.png" width="200" alt="Settings with app icons, language and security"><br><sub><b>Settings</b></sub></td>
+</tr>
 </table>
 
-**Nginx Proxy Manager / NPMplus**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9190.PNG" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9191.PNG" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9192.PNG" width="180" /></td>
-  </tr>
-</table>
+</div>
 
-**Beszel**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9193.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9194.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9195.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9196.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9197.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9198.PNG" width="145" /></td>
-  </tr>
-</table>
+---
 
-**Pi-hole · AdGuard Home · Healthchecks**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9199.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9218.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9219.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9238.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9239.PNG" width="145" /></td>
-  </tr>
-</table>
+> [!NOTE]
+> Rackwarden hasn't published a release yet, so for now you [build it from source](#install).
+> Version 2.0.0 is coming to iOS first. The Android app and the project folders still use the Homelab name.
 
-**Gitea / Forgejo · PatchMon · Jellystat · Plex**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9200.jpg" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9269.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/IMG_9275.PNG" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-ios/plex.PNG" width="145" /></td>
-  </tr>
-</table>
+## Why
+
+A homelab grows one web page at a time, and most of those pages weren't made for
+a phone. Put them behind a proxy such as Authentik, add two-factor codes, and
+simply checking whether everything is fine takes a dozen logins.
+
+Rackwarden brings them together as native dashboards: what's online, what needs
+attention, and the few actions you actually want on the go.
+
+## Features
+
+- **36 services in one app:** containers, storage, networking, media and
+  monitoring. Add several instances of the same service and switch between them.
+- **Works behind forward auth:** sign in to your proxy in the app or send
+  custom headers, set per service. One sign-in can cover every service. ¹
+- **Two-factor codes and OAuth:** one-time codes for services such as Nginx
+  Proxy Manager, Beszel and Dockge, and OAuth sign-in for Beszel. ¹
+- **Fallback addresses:** give a service a second URL, for example local and remote.
+- **Locked down:** PIN and biometric unlock, with service credentials kept in
+  the iOS Keychain.
+- **Encrypted backups:** move your services to another device with a
+  password-protected file.
+- **Made to feel at home:** light and dark mode, alternate icons, and English,
+  German, French, Italian and Spanish.
+- **Beyond services:** bookmarks, plus a shortcut to Tailscale when you need it.
+
+<sub>¹ iOS only for now.</sub>
+
+## Services
+
+### Infrastructure and monitoring
+
+| | Service | What you get |
+|:-:|---|---|
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/portainer.png" width="22" alt=""> | **Portainer** | Containers, quick actions and resource usage |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockge.png" width="22" alt=""> | **Dockge ¹** | Compose stacks and services, agents, start, stop, restart and update |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockhand.png" width="22" alt=""> | **Dockhand** | Container management |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockmon.png" width="22" alt=""> | **DockMon** | Docker hosts and containers, logs, restart and update |
+| <img src="HomelabSwift/Homelab/Assets.xcassets/service-komodo.imageset/komodo.png" width="22" alt=""> | **Komodo** | Resources, deployments, stacks and servers |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/proxmox.png" width="22" alt=""> | **Proxmox VE** | Nodes, guests, storage, networking, backups and cluster operations |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/truenas-scale.png" width="22" alt=""> | **TrueNAS SCALE / CORE** | Pools, disks, shares, services and alerts |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/scrutiny.png" width="22" alt=""> | **Scrutiny ¹** | Drive health, temperatures, S.M.A.R.T. attributes and archiving |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/beszel.png" width="22" alt=""> | **Beszel** | Server monitoring across nodes |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/uptime-kuma.png" width="22" alt=""> | **Uptime Kuma** | Monitor status and incidents |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/healthchecks.png" width="22" alt=""> | **Healthchecks** | Checks and health status |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/linux-update-dashboard.png" width="22" alt=""> | **Linux Update** | Pending package updates across hosts |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/patchmon.png" width="22" alt=""> | **PatchMon** | Software updates across your stack |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/gitea.png" width="22" alt=""> | **Gitea / Forgejo** | Repositories, activity and source browsing |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/wakapi.png" width="22" alt=""> | **Wakapi** | Coding activity and time tracking |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/crafty-controller.png" width="22" alt=""> | **Crafty Controller** | Game server management |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/pterodactyl.png" width="22" alt=""> | **Pterodactyl** | Game servers with power controls and live resources |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/calagopus.png" width="22" alt=""> | **Calagopus** | Game servers with power controls, uptime and resources |
+
+### Networking and DNS
+
+| | Service | What you get |
+|:-:|---|---|
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/nginx-proxy-manager.png" width="22" alt=""> | **Nginx Proxy Manager / NPMplus** | Proxy hosts, streams, redirects, certificates and access lists |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/pi-hole.png" width="22" alt=""> | **Pi-hole** | Queries, blocked domains, toggles and timers |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/adguard-home.png" width="22" alt=""> | **AdGuard Home** | Filters, rewrites, blocked services and query activity |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/technitium.png" width="22" alt=""> | **Technitium DNS** | DNS metrics and health |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/ubiquiti-unifi.png" width="22" alt=""> | **Ubiquiti Network** | Gateways, switches, access points, clients and sites |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/pangolin.png" width="22" alt=""> | **Pangolin / Newt** | Tunnels and peers |
+| <img src="HomelabSwift/Homelab/Assets.xcassets/service-maltrail.imageset/icon.png" width="22" alt=""> | **Maltrail** | Threat detections and daily findings |
+
+### Media and Servarr
+
+| | Service | What you get |
+|:-:|---|---|
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/plex.png" width="22" alt=""> | **Plex** | Libraries, sessions and recently added media |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/jellystat.png" width="22" alt=""> | **Jellystat** | Jellyfin activity, streams and usage |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/sonarr.png" width="22" alt=""> | **Sonarr** | TV library, queue, health and upcoming episodes |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/radarr.png" width="22" alt=""> | **Radarr** | Movie library, queue, health and upcoming releases |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/lidarr.png" width="22" alt=""> | **Lidarr** | Music library, queue, health and upcoming releases |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/prowlarr.png" width="22" alt=""> | **Prowlarr** | Indexers, connected apps and issues |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/bazarr.png" width="22" alt=""> | **Bazarr** | Subtitles, providers and issues |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/jellyseerr.png" width="22" alt=""> | **Jellyseerr** | Requests and availability |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/qbittorrent.png" width="22" alt=""> | **qBittorrent** | Transfers, speeds and connection status |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/gluetun.png" width="22" alt=""> | **Gluetun** | VPN status, public IP and forwarded port |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/flaresolverr.png" width="22" alt=""> | **FlareSolverr** | Sessions and status |
+
+<sub>¹ iOS only for now, so Android has 34 services.</sub>
+
+## Install
+
+There are no downloads yet. Once released, builds will appear on the
+[Releases page](https://github.com/milangtoth/Rackwarden/releases).
+
+### iOS
+
+You need a Mac with Xcode 26 or later and a device or simulator with iOS 26.
+
+**1. Get the code**
+
+```bash
+git clone https://github.com/milangtoth/Rackwarden.git
+cd Rackwarden
+cp HomelabSwift/Config/Signing.xcconfig.example HomelabSwift/Config/Signing.xcconfig
+```
+
+**2. Set your signing details**
+
+Put your own bundle ID and development team in `HomelabSwift/Config/Signing.xcconfig`.
+Git ignores that file, so set them there rather than under **Signing & Capabilities**.
+
+**3. Run it**
+
+Open `HomelabSwift/Homelab.xcodeproj`, choose your device and press **⌘R**. With a
+free Apple account, the app has to be reinstalled every 7 days.
+
+### Android
+
+Open `HomelabAndroid` in Android Studio, let Gradle sync, and run it on a device or
+emulator with Android 8.0 or later.
+
+## Usage
+
+| | |
+|---|---|
+| **Add a service** | Tap its card, enter the address and sign in. |
+| **Use a proxy login** | Turn on **Forward auth?** before signing in, then connect. |
+| **Skip the service's own login** | Choose **No separate login**, where the service supports it. |
+| **Sign in with OAuth** | Tap **Sign in with OAuth** (Beszel). |
+| **Share one proxy sign-in** | **Settings → Forward auth**, on by default. |
+| **Rearrange or hide services** | Tap **⇅** on Home or Servarr. |
+| **Move to another device** | Export and import a backup in **Settings**. |
+
+### Behind a login proxy
+
+```mermaid
+flowchart LR
+    A["Rackwarden"] -- "proxy session or headers" --> P["Forward auth proxy<br/><sub>such as Authentik</sub>"]
+    P -- "allowed" --> S["Your service"]
+    A -. "then, if needed" .-> L["Service login<br/><sub>password, API key, 2FA or OAuth</sub>"]
+    L -.-> S
+```
+
+1. Turn on **Forward auth?** and sign in to the proxy in the app, or enter custom
+   headers such as those for Cloudflare Access.
+2. Rackwarden checks that the proxy lets it through, and only then asks for the
+   service's own login.
+3. When the proxy session expires, the card shows **Sign in**. Your service login
+   is kept.
+
+<details>
+<summary><b>Good to know</b></summary>
+
+- Password autofill is limited and passkeys may not work in the in-app sign-in page.
+- How long you stay signed in depends on your proxy's session settings.
+- The Proxmox console doesn't go through forward auth.
+- For Beszel OAuth, add `rackwarden://oauth` to your provider's redirect URIs.
 
 </details>
 
----
+## Privacy and security
 
-## 🤖 Android App
+- **No account and no Rackwarden server.** The app talks to your services directly.
+- **Few outside requests.** Service icons come from public icon hosts, some artwork
+  and bookmark icons from third parties, and the update check from GitHub.
+- **Proxy credentials stay put.** They're only sent to the address they belong to,
+  never to another site after a redirect. Proxy sessions aren't included in backups.
+- **Careful actions.** Archiving drives and stopping or updating Dockge stacks asks
+  for confirmation first.
 
-The Android version is built with **Kotlin** and **Jetpack Compose** for **Android 8.0+**. It uses a modern Material 3 style, dynamic color where available, expressive cards, and native Android architecture patterns.
+See the [privacy policy](docs/privacy.html) for details.
 
-<table align="center">
-  <tr>
-    <th>Dashboard</th>
-    <th>Servarr</th>
-    <th>Bookmarks</th>
-  </tr>
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/Dashboard.jpg" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-android/Servarr.jpg" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_19_2026-03-16_20-24-21.jpg" width="180" /></td>
-  </tr>
-</table>
+## Development
 
-<table align="center">
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/photo_1_2026-03-16_20-24-21.jpg" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_4_2026-03-16_20-24-21.jpg" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_13_2026-03-16_20-24-21.jpg" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_16_2026-03-16_20-24-21.jpg" width="120" /></td>
-    <td align="center"><img src="media-docs/foto-android/plex.jpg" width="120" /></td>
-  </tr>
-  <tr>
-    <td align="center"><sub>Portainer</sub></td>
-    <td align="center"><sub>Beszel</sub></td>
-    <td align="center"><sub>Nginx Proxy</sub></td>
-    <td align="center"><sub>Pi-hole</sub></td>
-    <td align="center"><sub>Plex</sub></td>
-  </tr>
-</table>
+Build and test commands, branch conventions and release steps are in [AGENTS.md](AGENTS.md).
+What changed in each version is in the [changelog](CHANGELOG.md).
 
 <details>
-<summary><b>📸 View all Android screenshots</b></summary>
-<br>
+<summary><b>Project layout</b></summary>
 
-**Portainer**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/photo_1_2026-03-16_20-24-21.jpg" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_2_2026-03-16_20-24-21.jpg" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_3_2026-03-16_20-24-21.jpg" width="180" /></td>
-  </tr>
-</table>
-
-**Beszel**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/photo_4_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_5_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_6_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_7_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_8_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_9_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_10_2026-03-16_20-24-21.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_11_2026-03-16_20-24-21.jpg" width="110" /></td>
-  </tr>
-</table>
-
-**Nginx Proxy Manager / NPMplus · Pi-hole**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/photo_13_2026-03-16_20-24-21.jpg" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_14_2026-03-16_20-24-21.jpg" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_16_2026-03-16_20-24-21.jpg" width="145" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_17_2026-03-16_20-24-21.jpg" width="145" /></td>
-  </tr>
-</table>
-
-**AdGuard Home · Healthchecks · PatchMon · Jellystat · Plex**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/adguard1.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/adguard2.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/healthcheck1.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/healthcheck2.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_1_2026-03-21_01-00-34.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_2_2026-03-21_01-00-34.jpg" width="110" /></td>
-    <td align="center"><img src="media-docs/foto-android/plex.jpg" width="110" /></td>
-  </tr>
-</table>
-
-**Bookmarks**
-<table>
-  <tr>
-    <td align="center"><img src="media-docs/foto-android/photo_18_2026-03-16_20-24-21.jpg" width="180" /></td>
-    <td align="center"><img src="media-docs/foto-android/photo_19_2026-03-16_20-24-21.jpg" width="180" /></td>
-  </tr>
-</table>
+```
+HomelabSwift/      iOS app (Swift 6, SwiftUI) and its tests
+HomelabAndroid/    Android app (Kotlin, Jetpack Compose)
+docs/              privacy and support pages
+media-docs/        icons and screenshots
+apps.json          AltStore Classic / SideStore source, filled by releases
+app-version.json   version info for the in-app update check
+```
 
 </details>
 
----
+## Contributing
 
-## 📲 Install
+Bug reports, compatibility issues and feature requests are welcome in
+[GitHub Issues](https://github.com/milangtoth/Rackwarden/issues), and so are pull
+requests. Please don't report Rackwarden issues to the original project.
 
-There are no prebuilt Rackwarden downloads yet. Until the first release, build the app from source using the steps below.
+## License
 
-Releases will be published on the [Releases page](https://github.com/milangtoth/Rackwarden/releases).
+[Apache License 2.0](LICENSE), the same license as the original project. The
+software is provided as is, without warranties.
 
-> **Note:** The `apps.json` source and in-app update checks in this repository still point to the original project's final release, so don't use them to install or update Rackwarden.
+## Acknowledgements
 
----
+- Built on [Homelab Dashboard](https://github.com/JohnnWi/homelab-project) by
+  [JohnnWi](https://github.com/JohnnWi), now archived, with contributions from
+  [russssl](https://github.com/russssl), [FlintyLemming](https://github.com/FlintyLemming)
+  and [vladtaylor](https://github.com/vladtaylor). The full commit history is preserved here.
+- Service icons from [selfh.st/icons](https://selfh.st/icons/).
 
-## 🔧 Getting Started
-
-### Repository Layout
-
-- `HomelabSwift/`: native iOS app built with SwiftUI.
-- `HomelabAndroid/`: native Android app built with Kotlin and Jetpack Compose.
-- `docs/`: privacy and support pages inherited from the original project, pending an update.
-- `apps.json` and `app-version.json`: update metadata for the AltStore Classic / SideStore source and in-app update banner, pending an update.
-
-### Build for iOS
-
-1. Open `HomelabSwift/Homelab.xcodeproj` in Xcode 26+.
-2. Select your development team under **Signing & Capabilities**.
-3. Build and run on a real device or simulator.
-
-### Build for Android
-
-1. Import `HomelabAndroid` into Android Studio.
-2. Let Gradle sync and resolve dependencies.
-3. Run on a connected device or emulator.
-
----
-
-## 🧭 Support & Contributing
-
-Bug reports, compatibility issues, and feature requests are welcome in [GitHub Issues](https://github.com/milangtoth/Rackwarden/issues). Pull requests are welcome too; see [AGENTS.md](AGENTS.md) for build checks and repository conventions.
-
-Please don't report Rackwarden issues to the original project.
-
----
-
-## 🙏 Credits
-
-Rackwarden is built on [Homelab Dashboard](https://github.com/JohnnWi/homelab-project) by [JohnnWi](https://github.com/JohnnWi), with contributions from [russssl](https://github.com/russssl), [FlintyLemming](https://github.com/FlintyLemming), and [vladtaylor](https://github.com/vladtaylor). The full commit history is preserved in this repository.
-
----
-
-## 📄 License
-
-This project is licensed under the **Apache License 2.0**, the same license as the original project.
-
-See [LICENSE](LICENSE) for the full text.
+<sub>Rackwarden is an independent continuation and is not affiliated with or endorsed by the original author or the services it connects to. Product names and logos belong to their owners.</sub>
