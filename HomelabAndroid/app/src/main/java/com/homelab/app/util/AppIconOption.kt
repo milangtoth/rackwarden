@@ -5,6 +5,9 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.homelab.app.R
 
+/** Where the manifest's aliases live; unlike the app ID, this did not change with the new name. */
+internal const val CODE_PACKAGE = "com.homelab.app"
+
 enum class AppIconOption(
     val persistedValue: String,
     val aliasName: String,
@@ -49,7 +52,7 @@ enum class AppIconOption(
     );
 
     fun componentName(packageName: String): ComponentName {
-        return ComponentName(packageName, packageName + aliasName)
+        return ComponentName(packageName, CODE_PACKAGE + aliasName)
     }
 
     companion object {

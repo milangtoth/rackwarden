@@ -11,7 +11,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.homelab.app"
+        applicationId = "com.milangtoth.rackwarden"
         minSdk = 26
         targetSdk = 36
         versionCode = 40
