@@ -1,48 +1,5 @@
 import Foundation
 
-/// One WebSocket to TrueNAS, so tests can stand in for the server.
-protocol TrueNASChannel: Sendable {
-    func send(_ text: String) async throws
-    func receive() async throws -> Data
-    func close()
-}
-
-private struct TrueNASSocket: TrueNASChannel {
-    let task: URLSessionWebSocketTask
-
-    func send(_ text: String) async throws {
-        try await reportingSignIn { try await task.send(.string(text)) }
-    }
-
-    func receive() async throws -> Data {
-        try await reportingSignIn {
-            switch try await task.receive() {
-            case .string(let text): return Data(text.utf8)
-            case .data(let data): return data
-            @unknown default: throw APIError.decodingError(URLError(.cannotDecodeContentData))
-            }
-        }
-    }
-
-    func close() {
-        task.cancel(with: .normalClosure, reason: nil)
-    }
-
-    private func reportingSignIn<T: Sendable>(_ work: @Sendable () async throws -> T) async throws -> T {
-        do {
-            return try await withTaskCancellationHandler {
-                try await work()
-            } onCancel: {
-                task.cancel()
-            }
-        } catch {
-            try Task.checkCancellation()
-            if (task.delegate as? RedirectGuard)?.wasBlocked == true { throw APIError.forwardAuthRequired }
-            throw error
-        }
-    }
-}
-
 actor TrueNASAPIClient {
     private enum ProtocolMode: Equatable {
         case jsonRPC(endpoint: String)
@@ -62,7 +19,7 @@ actor TrueNASAPIClient {
     }
 
     private struct Connection {
-        let channel: any TrueNASChannel
+        let channel: any WebSocketChannel
         let mode: ProtocolMode
     }
 
@@ -72,10 +29,10 @@ actor TrueNASAPIClient {
     private var apiKey: String = ""
     private var storedAllowSelfSigned = true
 
-    private let makeChannel: (@Sendable (URL) throws -> any TrueNASChannel)?
+    private let makeChannel: (@Sendable (URL) throws -> any WebSocketChannel)?
     private var workingModes: [String: ProtocolMode] = [:]
 
-    init(instanceId: UUID, makeChannel: (@Sendable (URL) throws -> any TrueNASChannel)? = nil) {
+    init(instanceId: UUID, makeChannel: (@Sendable (URL) throws -> any WebSocketChannel)? = nil) {
         self.instanceId = instanceId
         self.makeChannel = makeChannel
     }
@@ -293,7 +250,7 @@ actor TrueNASAPIClient {
 
     // MARK: - JSON-RPC 2.0
 
-    private func jsonRPCCall(channel: any TrueNASChannel, id: String, method: String, params: [Any]) async throws -> Any {
+    private func jsonRPCCall(channel: any WebSocketChannel, id: String, method: String, params: [Any]) async throws -> Any {
         try await sendJSON(channel: channel, object: [
             "jsonrpc": "2.0",
             "id": id,
@@ -321,7 +278,7 @@ actor TrueNASAPIClient {
 
     // MARK: - DDP fallback for CORE / older SCALE
 
-    private func waitForDDPConnected(channel: any TrueNASChannel) async throws {
+    private func waitForDDPConnected(channel: any WebSocketChannel) async throws {
         while true {
             let object = try await receiveJSONObject(channel: channel)
             guard let dict = object as? [String: Any],
@@ -337,7 +294,7 @@ actor TrueNASAPIClient {
         }
     }
 
-    private func ddpMethodCall(channel: any TrueNASChannel, method: String, params: [Any]) async throws -> Any {
+    private func ddpMethodCall(channel: any WebSocketChannel, method: String, params: [Any]) async throws -> Any {
         let id = "ddp-\(UUID().uuidString)"
         try await sendJSON(channel: channel, object: [
             "id": id,
@@ -365,7 +322,7 @@ actor TrueNASAPIClient {
 
     // MARK: - WebSocket helpers
 
-    private func openChannel(baseURL: String, endpoint: String) throws -> any TrueNASChannel {
+    private func openChannel(baseURL: String, endpoint: String) throws -> any WebSocketChannel {
         let cleanURL = Self.cleanURL(baseURL)
         guard var components = URLComponents(string: cleanURL) else { throw APIError.invalidURL }
         guard Self.usesSecureAPITransport(cleanURL) else {
@@ -393,10 +350,10 @@ actor TrueNASAPIClient {
         // App and disk lists can be larger than the default 1 MB.
         task.maximumMessageSize = 16 * 1024 * 1024
         task.resume()
-        return TrueNASSocket(task: task)
+        return URLSessionChannel(task: task)
     }
 
-    private func sendJSON(channel: any TrueNASChannel, object: Any) async throws {
+    private func sendJSON(channel: any WebSocketChannel, object: Any) async throws {
         let data = try JSONSerialization.data(withJSONObject: object)
         guard let text = String(data: data, encoding: .utf8) else {
             throw APIError.decodingError(URLError(.cannotDecodeRawData))
@@ -404,7 +361,7 @@ actor TrueNASAPIClient {
         try await channel.send(text)
     }
 
-    private func receiveJSONObject(channel: any TrueNASChannel) async throws -> Any {
+    private func receiveJSONObject(channel: any WebSocketChannel) async throws -> Any {
         let data = try await channel.receive()
         return try JSONSerialization.jsonObject(with: data)
     }

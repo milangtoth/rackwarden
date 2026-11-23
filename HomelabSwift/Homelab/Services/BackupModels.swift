@@ -73,6 +73,8 @@ enum BackupServiceTypeMapper {
         case .truenas:           return "truenas"
         case .pterodactyl:       return "pterodactyl"
         case .calagopus:         return "calagopus"
+        case .scrutiny:          return "scrutiny"
+        case .dockge:            return "dockge"
         }
     }
 
@@ -134,6 +136,8 @@ enum BackupServiceTypeMapper {
              "truenas-core":          return .truenas
         case "pterodactyl":          return .pterodactyl
         case "calagopus":            return .calagopus
+        case "scrutiny":             return .scrutiny
+        case "dockge":               return .dockge
         default:                     return nil
         }
     }

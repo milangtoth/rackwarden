@@ -15,7 +15,7 @@ private final class FakeTrueNAS: @unchecked Sendable {
     var logins: Int { lock.withLock { loginCount } }
     var opened: Int { lock.withLock { openCount } }
 
-    func open(_ url: URL) -> any TrueNASChannel {
+    func open(_ url: URL) -> any WebSocketChannel {
         lock.withLock { openCount += 1 }
         return Channel(server: self, reachable: url.path == endpoint)
     }
@@ -46,7 +46,7 @@ private final class FakeTrueNAS: @unchecked Sendable {
         return try JSONSerialization.data(withJSONObject: reply)
     }
 
-    private final class Channel: TrueNASChannel, @unchecked Sendable {
+    private final class Channel: WebSocketChannel, @unchecked Sendable {
         let server: FakeTrueNAS
         let reachable: Bool
         private let lock = NSLock()
@@ -160,7 +160,7 @@ final class TrueNASClientTests: XCTestCase {
     }
 }
 
-private struct SignedOutChannel: TrueNASChannel {
+private struct SignedOutChannel: WebSocketChannel {
     func send(_ text: String) async throws { throw APIError.forwardAuthRequired }
     func receive() async throws -> Data { throw APIError.forwardAuthRequired }
     func close() {}

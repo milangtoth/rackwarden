@@ -49,12 +49,12 @@ enum ForwardAuth {
         guard header.isValid else { return false }
         return header.name.lowercased() != "authorization" || !usesNativeLogin
             || [.pihole, .technitium, .dockhand, .komodo, .maltrail, .qbittorrent, .radarr, .sonarr, .lidarr, .plex,
-                .healthchecks, .jellystat, .unifiNetwork, .truenas].contains(type)
+                .healthchecks, .jellystat, .unifiNetwork, .truenas, .scrutiny, .dockge].contains(type)
     }
 
     /// Services that can work with the proxy as their only sign-in.
     static func canSkipNativeLogin(_ type: ServiceType) -> Bool {
-        [.gluetun, .flaresolverr, .maltrail, .uptimeKuma, .adguardHome, .qbittorrent].contains(type)
+        [.gluetun, .flaresolverr, .maltrail, .uptimeKuma, .adguardHome, .qbittorrent, .scrutiny, .dockge].contains(type)
     }
 
     private static func reply(

@@ -157,7 +157,7 @@ final class TwoFactorClientTests: XCTestCase {
 /// Minimal loopback HTTP server; one request per connection.
 /// For a 302 the handler returns the target instead of a body.
 final class MockServer: @unchecked Sendable {
-    struct Request: Sendable { let route: String; let body: String; let cookie: String; let headers: [String] }
+    struct Request: Sendable { let route: String; let body: String; let cookie: String; let headers: [String]; var query = "" }
 
     private let listener: NWListener
     private let queue = DispatchQueue(label: "mock-server")
@@ -211,6 +211,10 @@ final class MockServer: @unchecked Sendable {
         guard body.utf8.count >= length else { return nil }
         let cookie = lines.first { $0.lowercased().hasPrefix("cookie:") } ?? ""
         let start = lines[0].split(separator: " ")
-        return Request(route: "\(start[0]) \(start[1].split(separator: "?")[0])", body: body, cookie: cookie, headers: Array(lines.dropFirst()))
+        let target = start[1].split(separator: "?", maxSplits: 1)
+        return Request(
+            route: "\(start[0]) \(target[0])", body: body, cookie: cookie, headers: Array(lines.dropFirst()),
+            query: target.count > 1 ? String(target[1]) : ""
+        )
     }
 }

@@ -1226,6 +1226,58 @@ struct Translations {
     let oauthDenied: String
     let oauthRejected: String
     let oauthEmailNeeded: String
+    let serviceScrutinyDesc: String
+    let loginHintScrutiny: String
+    let scrutinyNoDrives: String
+    let scrutinyTestNotification: String
+    let scrutinyTestSent: String
+    let scrutinyHealthyDrives: String
+    let scrutinyFailedDrives: String
+    let scrutinyHottest: String
+    let scrutinyDrives: String
+    let scrutinyArchived: String
+    let scrutinyModel: String
+    let scrutinySerial: String
+    let scrutinyFirmware: String
+    let scrutinyCapacity: String
+    let scrutinyTemperature: String
+    let scrutinyPoweredOn: String
+    let scrutinyPowerCycles: String
+    let scrutinyLastReport: String
+    let scrutinyWeek: String
+    let scrutinyMonth: String
+    let scrutinyYear: String
+    let scrutinyAttributes: String
+    let scrutinyAllPassed: String
+    let scrutinyPassed: String
+    let scrutinyFailed: String
+    let scrutinyUnknown: String
+    let scrutinyCritical: String
+    let scrutinyArchive: String
+    let scrutinyUnarchive: String
+    let scrutinyArchiveConfirm: String
+    let scrutinyActionFailed: String
+    let serviceDockgeDesc: String
+    let loginHintDockge: String
+    let dockgeRunningStacks: String
+    let dockgeNoStacks: String
+    let dockgeStacks: String
+    let dockgeServices: String
+    let dockgeNotManaged: String
+    let dockgeStart: String
+    let dockgeStop: String
+    let dockgeRestart: String
+    let dockgeUpdate: String
+    let dockgeStopConfirm: String
+    let dockgeUpdateConfirm: String
+    let dockgeWorking: String
+    let dockgeUnconfirmed: String
+    let dockgeAgentOffline: String
+    let dockgeNeedsSetup: String
+    let dockgeStatusRunning: String
+    let dockgeStatusExited: String
+    let dockgeStatusInactive: String
+    let dockgeStatusUnknown: String
     let errorSignInRequired: String
     let forwardAuthTitle: String
     let forwardAuthDesc: String

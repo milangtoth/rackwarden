@@ -359,6 +359,8 @@ struct HomeView: View {
         case .truenas:           TrueNASDashboard(instanceId: route.instanceId)
         case .pterodactyl:       PterodactylDashboard(instanceId: route.instanceId)
         case .calagopus:         CalagopusDashboard(instanceId: route.instanceId)
+        case .scrutiny:          ScrutinyDashboard(instanceId: route.instanceId)
+        case .dockge:            DockgeDashboard(instanceId: route.instanceId)
         case .jellyseerr, .prowlarr, .bazarr, .gluetun, .flaresolverr:
                                  GenericMediaDashboard(serviceType: route.type, instanceId: route.instanceId)
         }
@@ -580,6 +582,14 @@ struct HomeView: View {
                 let servers = try await client.getServers()
                 let running = await countRunningCalagopusServers(servers, client: client)
                 return ServiceSummaryInfo(value: "\(running)", subValue: "/ \(servers.count)", label: localizer.t.calagopusRunningServers)
+            case .scrutiny:
+                guard let client = await servicesStore.scrutinyClient(instanceId: instanceId) else { return nil }
+                let overview = try await client.getOverview()
+                return ServiceSummaryInfo(value: "\(overview.healthyCount)", subValue: "/ \(overview.active.count)", label: localizer.t.scrutinyHealthyDrives)
+            case .dockge:
+                guard let client = await servicesStore.dockgeClient(instanceId: instanceId) else { return nil }
+                let overview = try await client.getOverview()
+                return ServiceSummaryInfo(value: "\(overview.runningCount)", subValue: "/ \(overview.stacks.count)", label: localizer.t.dockgeRunningStacks)
             default:
                 return nil
             }

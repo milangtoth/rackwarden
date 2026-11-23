@@ -33,6 +33,8 @@ private final class ServiceClientManager {
     private var truenasClients: [UUID: TrueNASAPIClient] = [:]
     private var pterodactylClients: [UUID: PterodactylAPIClient] = [:]
     private var calagopusClients: [UUID: CalagopusAPIClient] = [:]
+    private var scrutinyClients: [UUID: ScrutinyAPIClient] = [:]
+    private var dockgeClients: [UUID: DockgeAPIClient] = [:]
 
     func portainerClient(id: UUID) -> PortainerAPIClient {
         if let client = portainerClients[id] {
@@ -285,6 +287,24 @@ private final class ServiceClientManager {
         return client
     }
 
+    func scrutinyClient(id: UUID) -> ScrutinyAPIClient {
+        if let client = scrutinyClients[id] {
+            return client
+        }
+        let client = ScrutinyAPIClient(instanceId: id)
+        scrutinyClients[id] = client
+        return client
+    }
+
+    func dockgeClient(id: UUID) -> DockgeAPIClient {
+        if let client = dockgeClients[id] {
+            return client
+        }
+        let client = DockgeAPIClient(instanceId: id)
+        dockgeClients[id] = client
+        return client
+    }
+
     func calagopusClient(id: UUID) -> CalagopusAPIClient {
         if let client = calagopusClients[id] {
             return client
@@ -363,6 +383,10 @@ private final class ServiceClientManager {
             pterodactylClients.removeValue(forKey: id)
         case .calagopus:
             calagopusClients.removeValue(forKey: id)
+        case .scrutiny:
+            scrutinyClients.removeValue(forKey: id)
+        case .dockge:
+            dockgeClients.removeValue(forKey: id)
         case .jellyseerr, .prowlarr, .bazarr, .gluetun, .flaresolverr:
             genericClients.removeValue(forKey: id)
         }
@@ -400,6 +424,8 @@ private final class ServiceClientManager {
         truenasClients = truenasClients.filter { knownInstanceIds.contains($0.key) }
         pterodactylClients = pterodactylClients.filter { knownInstanceIds.contains($0.key) }
         calagopusClients = calagopusClients.filter { knownInstanceIds.contains($0.key) }
+        scrutinyClients = scrutinyClients.filter { knownInstanceIds.contains($0.key) }
+        dockgeClients = dockgeClients.filter { knownInstanceIds.contains($0.key) }
         genericClients = genericClients.filter { knownInstanceIds.contains($0.key) }
     }
 }
@@ -768,6 +794,16 @@ final class ServicesStore {
         return clientManager.pterodactylClient(id: instance.id)
     }
 
+    func scrutinyClient(instanceId: UUID) async -> ScrutinyAPIClient? {
+        guard let instance = instancesById[instanceId], instance.type == .scrutiny else { return nil }
+        return clientManager.scrutinyClient(id: instance.id)
+    }
+
+    func dockgeClient(instanceId: UUID) async -> DockgeAPIClient? {
+        guard let instance = instancesById[instanceId], instance.type == .dockge else { return nil }
+        return clientManager.dockgeClient(id: instance.id)
+    }
+
     func calagopusClient(instanceId: UUID) async -> CalagopusAPIClient? {
         guard let instance = instancesById[instanceId], instance.type == .calagopus else { return nil }
         return clientManager.calagopusClient(id: instance.id)
@@ -848,6 +884,10 @@ final class ServicesStore {
             ok = await clientManager.pterodactylClient(id: instanceId).ping()
         case .calagopus:
             ok = await clientManager.calagopusClient(id: instanceId).ping()
+        case .scrutiny:
+            ok = await clientManager.scrutinyClient(id: instanceId).ping()
+        case .dockge:
+            ok = await clientManager.dockgeClient(id: instanceId).ping()
         case .jellyseerr, .prowlarr, .bazarr, .gluetun, .flaresolverr:
             ok = await clientManager.genericClient(id: instanceId, type: instance.type).ping()
         }
@@ -1386,6 +1426,24 @@ final class ServicesStore {
                 fallbackUrl: instance.fallbackUrl,
                 allowSelfSigned: instance.allowSelfSigned
             )
+
+        case .scrutiny:
+            await clientManager.scrutinyClient(id: instance.id).configure(
+                url: instance.url, fallbackUrl: instance.fallbackUrl, allowSelfSigned: instance.allowSelfSigned
+            )
+
+        case .dockge:
+            let client = clientManager.dockgeClient(id: instance.id)
+            await client.configure(
+                url: instance.url, token: instance.token,
+                fallbackUrl: instance.fallbackUrl, allowSelfSigned: instance.allowSelfSigned
+            )
+            let instanceId = instance.id
+            await client.setSignInRequiredCallback { [weak self] rejectedToken in
+                Task { @MainActor in
+                    self?.markNeedsSignIn(instanceId, rejectedToken: rejectedToken)
+                }
+            }
 
         case .calagopus:
             let client = clientManager.calagopusClient(id: instance.id)

@@ -58,6 +58,7 @@ struct ServiceLoginView: View {
             || serviceType == .dockhand
             || serviceType == .maltrail
             || serviceType == .uptimeKuma
+            || serviceType == .dockge
     }
 
     private var usesApiKeyAuth: Bool {
@@ -86,7 +87,7 @@ struct ServiceLoginView: View {
     }
 
     private var supportsCredentiallessAuth: Bool {
-        serviceType == .gluetun || serviceType == .flaresolverr
+        serviceType == .gluetun || serviceType == .flaresolverr || serviceType == .scrutiny
     }
 
     private var supportsOptionalApiKey: Bool {
@@ -589,6 +590,8 @@ struct ServiceLoginView: View {
         case .truenas:           return localizer.t.loginHintTruenas
         case .pterodactyl:       return localizer.t.loginHintPterodactyl
         case .calagopus:         return localizer.t.loginHintCalagopus
+        case .scrutiny:          return localizer.t.loginHintScrutiny
+        case .dockge:            return localizer.t.loginHintDockge
         case .qbittorrent, .radarr, .sonarr, .lidarr, .jellyseerr, .prowlarr, .bazarr:
                                  return nil
         default: return nil
@@ -862,6 +865,14 @@ struct ServiceLoginView: View {
                 let client = GenericAPIClient(serviceType: serviceType, instanceId: draftInstanceId)
                 await client.configure(url: url, fallbackUrl: fallbackUrl, apiKey: nil, allowSelfSigned: allowSelfSigned)
                 guard await client.ping() else { throw APIError.custom(localizer.t.loginErrorFailed) }
+            case .scrutiny:
+                let client = ScrutinyAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.getOverview()
+            case .dockge:
+                let client = DockgeAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, token: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.getOverview()
             default:
                 throw APIError.custom(localizer.t.loginErrorCredentials)
             }
@@ -1028,6 +1039,59 @@ struct ServiceLoginView: View {
                 token: "",
                 username: existingInstance?.username,
                 apiKey: key,
+                fallbackUrl: fallbackUrl,
+                allowSelfSigned: allowSelfSigned
+            )
+
+        case .scrutiny:
+            // Scrutiny has no login of its own.
+            let client = ScrutinyAPIClient(instanceId: draftInstanceId)
+            await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+            _ = try await client.getOverview()
+            return ServiceInstance(
+                id: existingInstanceId ?? draftInstanceId,
+                type: .scrutiny,
+                label: label,
+                url: url,
+                fallbackUrl: fallbackUrl,
+                allowSelfSigned: allowSelfSigned
+            )
+
+        case .dockge:
+            let client = DockgeAPIClient(instanceId: draftInstanceId)
+            let identity = normalizedOptional(username)
+            let token: String
+            if let secret = normalizedOptional(password) {
+                guard let identity else { throw APIError.custom(localizer.t.loginErrorCredentials) }
+                await client.configure(url: url, token: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                do {
+                    token = try await client.login(username: identity, password: secret)
+                } catch APIError.twoFactorRequired(let challenge) {
+                    token = try await promptForCode(
+                        challenge,
+                        verify: { _, code in try await client.login(username: identity, password: secret, code: code) }
+                    )
+                }
+            } else if let existing = existingInstance, !existing.token.isEmpty {
+                guard existing.url == url else { throw APIError.custom(localizer.t.loginErrorPasswordRequired) }
+                token = existing.token
+            } else {
+                token = ""
+            }
+            await client.configure(url: url, token: token, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+            do {
+                _ = try await client.getOverview()
+            } catch APIError.unauthorized where token.isEmpty {
+                throw APIError.custom(localizer.t.loginErrorCredentials)
+            }
+            // The session does not expire, so the password is not kept.
+            return ServiceInstance(
+                id: existingInstanceId ?? draftInstanceId,
+                type: .dockge,
+                label: label,
+                url: url,
+                token: token,
+                username: identity,
                 fallbackUrl: fallbackUrl,
                 allowSelfSigned: allowSelfSigned
             )
