@@ -1011,6 +1011,16 @@ final class ServicesStore {
             }
         }
 
+        // Beszel without a password (OAuth): renew the session or ask the user to sign in again.
+        if current.type == .beszel, current.password?.isEmpty ?? true {
+            let client = clientManager.beszelClient(id: instanceId)
+            if await client.checkSession() { return }
+            if await client.isSignInRequired {
+                markNeedsSignIn(instanceId, rejectedToken: current.token)
+                return
+            }
+        }
+
         // Nginx Proxy Manager: re-authenticate using stored email/password
         if current.type == .nginxProxyManager,
            let email = current.username, !email.isEmpty,

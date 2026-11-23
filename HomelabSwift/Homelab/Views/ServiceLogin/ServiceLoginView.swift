@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 struct ServiceLoginView: View {
@@ -7,6 +8,7 @@ struct ServiceLoginView: View {
     @Environment(ServicesStore.self) private var servicesStore
     @Environment(Localizer.self) private var localizer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.webAuthenticationSession) private var webAuthenticationSession
 
     /// Test logins use this ID so they never touch the saved instance.
     @State private var draftInstanceId = UUID()
@@ -35,6 +37,8 @@ struct ServiceLoginView: View {
     @State private var twoFactorPrompt: TwoFactorPrompt?
     @State private var forwardAuth = ForwardAuthForm()
     @State private var offersForwardAuth = false
+    @State private var oauthMethods: BeszelAuthMethods?
+    @State private var showOAuthProviders = false
 
     private var existingInstance: ServiceInstance? {
         existingInstanceId.flatMap { servicesStore.instance(id: $0) }
@@ -170,6 +174,11 @@ struct ServiceLoginView: View {
             }
             .sheet(item: $twoFactorPrompt) { prompt in
                 TwoFactorSheet(prompt: prompt)
+            }
+            .confirmationDialog(localizer.t.oauthChooseProvider, isPresented: $showOAuthProviders, titleVisibility: .visible) {
+                ForEach(oauthMethods?.providers ?? []) { provider in
+                    Button(provider.title) { startOAuth(with: provider) }
+                }
             }
             .sheet(isPresented: $showUniFiDemo) {
                 NavigationStack {
@@ -397,18 +406,20 @@ struct ServiceLoginView: View {
                     )
                 }
 
-                InputField(
-                    icon: "lock.fill",
-                    placeholder: isEditing
-                        ? localizer.t.loginPasswordIfChanging
-                        : (serviceType == .patchmon ? localizer.t.loginTokenSecret : localizer.t.loginPassword),
-                    text: $password,
-                    isSecure: !showPassword,
-                    showToggle: true,
-                    toggleAction: { showPassword.toggle() },
-                    showPassword: showPassword,
-                    onSubmit: handleSave
-                )
+                if !hidesPassword {
+                    InputField(
+                        icon: "lock.fill",
+                        placeholder: isEditing
+                            ? localizer.t.loginPasswordIfChanging
+                            : (serviceType == .patchmon ? localizer.t.loginTokenSecret : localizer.t.loginPassword),
+                        text: $password,
+                        isSecure: !showPassword,
+                        showToggle: true,
+                        toggleAction: { showPassword.toggle() },
+                        showPassword: showPassword,
+                        onSubmit: handleSave
+                    )
+                }
 
                 if serviceType == .dockhand || serviceType == .technitium {
                     InputField(
@@ -449,6 +460,23 @@ struct ServiceLoginView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .glassCard()
+
+            if serviceType == .beszel {
+                VStack(alignment: .leading, spacing: 8) {
+                    Button(action: loadOAuthProviders) {
+                        Label(localizer.t.oauthSignIn, systemImage: "person.badge.key.fill")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(serviceColor)
+                    .disabled(isLoading || normalizedURL(url).isEmpty)
+
+                    Text(String(format: localizer.t.oauthHint, OAuthCallback.redirectURL))
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.textSecondary)
+                }
+            }
 
             Button(action: handleSave) {
                 Group {
@@ -656,6 +684,107 @@ struct ServiceLoginView: View {
     }
 
     private func handleSave() {
+        save { label, url, fallbackUrl in
+            skipsNativeLogin
+                ? try await buildInstanceWithoutLogin(label: label, url: url, fallbackUrl: fallbackUrl)
+                : try await buildInstance(label: label, url: url, fallbackUrl: fallbackUrl)
+        }
+    }
+
+    // MARK: - OAuth
+
+    private var hidesPassword: Bool {
+        serviceType == .beszel && oauthMethods?.allowsPassword == false
+    }
+
+    private func beszelDraftClient() async -> BeszelAPIClient {
+        let client = BeszelAPIClient(instanceId: draftInstanceId)
+        await client.configure(url: "", token: "", allowSelfSigned: allowSelfSigned)
+        return client
+    }
+
+    /// Asks the server which providers it has; a single one is used right away.
+    private func loadOAuthProviders() {
+        endEditing()
+        errorMessage = nil
+        do {
+            try applyForwardAuthDraft()
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+        isLoading = true
+        Task {
+            defer { isLoading = false }
+            do {
+                let methods = try await beszelDraftClient().authMethods(
+                    url: normalizedURL(url), fallbackUrl: normalizedOptionalURL(fallbackUrl)
+                )
+                oauthMethods = methods
+                guard let first = methods.providers.first else {
+                    showError(localizer.t.oauthUnavailable)
+                    return
+                }
+                if methods.providers.count == 1 {
+                    startOAuth(with: first)
+                } else {
+                    showOAuthProviders = true
+                }
+            } catch {
+                showError(resolveErrorMessage(error))
+                if !usesForwardAuth, let target = URL(string: normalizedURL(url)) {
+                    offersForwardAuth = await ForwardAuth.isProtected(target, allowSelfSigned: allowSelfSigned)
+                }
+            }
+        }
+    }
+
+    private func startOAuth(with provider: BeszelAuthMethods.Provider) {
+        guard let baseURL = oauthMethods?.baseURL else { return }
+        save { label, url, fallbackUrl in
+            // The address may have changed since the providers were loaded.
+            guard [url, fallbackUrl].contains(baseURL) else { throw APIError.custom(localizer.t.oauthInvalidReply) }
+            let reply: URL
+            do {
+                reply = try await webAuthenticationSession.authenticate(
+                    using: provider.signInURL(),
+                    callback: .customScheme(OAuthCallback.scheme),
+                    additionalHeaderFields: [:]
+                )
+            } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+                throw CancellationError()
+            }
+            let code = try OAuthCallback.code(from: reply, state: provider.state)
+            let client = await beszelDraftClient()
+            let email = normalizedOptional(username)
+            let token: String
+            var account = email
+            do {
+                let session = try await client.completeOAuth(provider, code: code, baseURL: baseURL, email: email)
+                token = session.token
+                account = session.record?.email ?? email
+            } catch APIError.twoFactorRequired(let challenge) {
+                let sent = try await client.requestTwoFactorCode(challenge)
+                token = try await promptForCode(
+                    sent,
+                    resend: { try await client.requestTwoFactorCode($0) },
+                    verify: { try await client.completeTwoFactor($0, code: $1) }
+                )
+            }
+            return ServiceInstance(
+                id: existingInstanceId ?? draftInstanceId,
+                type: .beszel,
+                label: label,
+                url: url,
+                token: token,
+                username: account,
+                fallbackUrl: fallbackUrl,
+                allowSelfSigned: allowSelfSigned
+            )
+        }
+    }
+
+    private func save(_ build: @escaping @MainActor (String, String, String?) async throws -> ServiceInstance) {
         errorMessage = nil
 
         let cleanUrl = normalizedURL(url)
@@ -679,9 +808,7 @@ struct ServiceLoginView: View {
 
         Task {
             do {
-                let instance = skipsNativeLogin
-                    ? try await buildInstanceWithoutLogin(label: cleanLabel, url: cleanUrl, fallbackUrl: cleanFallback)
-                    : try await buildInstance(label: cleanLabel, url: cleanUrl, fallbackUrl: cleanFallback)
+                let instance = try await build(cleanLabel, cleanUrl, cleanFallback)
                 AccessProfileStore.shared.commitDraft(draftInstanceId, to: instance)
                 removeUnusedWebData()
                 await servicesStore.saveInstance(instance, refreshPiHoleAuth: false)

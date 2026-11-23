@@ -15,6 +15,8 @@ actor BeszelAPIClient {
     /// Set once a silent login was asked for a code, so it is not repeated.
     private var needsSignIn = false
     private var lastRenewal: Date?
+    private var sessionCheck: Task<Bool, Never>?
+    private var lastEmptyCheck: Date?
 
     init(instanceId: UUID) {
         self.instanceId = instanceId
@@ -29,7 +31,8 @@ actor BeszelAPIClient {
         if token != self.token { needsSignIn = false }
         self.token = token
         if let email, !email.isEmpty { self.email = email }
-        if let password, !password.isEmpty { self.storedPassword = password }
+        // Signing in with OAuth replaces a password, so none may be left behind.
+        self.storedPassword = password ?? ""
     
         if let allowSelfSigned {
             storedAllowSelfSigned = allowSelfSigned
@@ -79,7 +82,15 @@ actor BeszelAPIClient {
     /// Attempts to refresh the token using stored credentials
     /// - Parameter expectsExpiry: false when the token may still be fine and only looks rejected.
     private func refreshToken(expectsExpiry: Bool = true) async -> Bool {
-        guard !email.isEmpty, !storedPassword.isEmpty, !isRefreshing, !needsSignIn else { return false }
+        if storedPassword.isEmpty {
+            if !expectsExpiry {
+                // A server without systems also answers with an empty list.
+                if let lastEmptyCheck, Date().timeIntervalSince(lastEmptyCheck) < 600 { return false }
+                lastEmptyCheck = Date()
+            }
+            return await checkSession()
+        }
+        guard !email.isEmpty, !isRefreshing, !needsSignIn else { return false }
         isRefreshing = true
         defer { isRefreshing = false }
 
@@ -101,6 +112,53 @@ actor BeszelAPIClient {
             return false
         }
     }
+
+    /// Without a password (OAuth), a rejected session can only be renewed or handed to the user.
+    /// Returns true when the session is valid again.
+    func checkSession() async -> Bool {
+        if let sessionCheck { return await sessionCheck.value }
+        guard !token.isEmpty, !needsSignIn else { return false }
+        let check = Task { await runSessionCheck() }
+        sessionCheck = check
+        defer { sessionCheck = nil }
+        return await check.value
+    }
+
+    private struct PocketBaseError: Decodable { let status: Int }
+
+    private func runSessionCheck() async -> Bool {
+        let current = token
+        if !TokenLifetime.isExpired(current) {
+            let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+            var rejected = false
+            for base in [baseURL, fallbackURL] where !base.isEmpty {
+                guard let url = URL(string: "\(base)/api/collections/users/auth-refresh") else { continue }
+                var req = URLRequest(url: url)
+                req.httpMethod = "POST"
+                authHeaders().forEach { req.setValue($1, forHTTPHeaderField: $0) }
+                guard let (data, resp) = try? await session.data(for: req),
+                      let http = resp as? HTTPURLResponse else { continue }
+                if http.statusCode == 200, let body = try? JSONDecoder().decode(BeszelAuthResponse.self, from: data) {
+                    guard token == current else { return true }
+                    token = body.token
+                    onTokenRefreshed?(body.token)
+                    return true
+                }
+                // Only PocketBase's own answer counts, not one from a proxy in front of it.
+                if http.statusCode == 401, (try? JSONDecoder().decode(PocketBaseError.self, from: data))?.status == 401 {
+                    rejected = true
+                    break
+                }
+            }
+            guard rejected else { return false }
+        }
+        guard token == current else { return true }
+        needsSignIn = true
+        onSignInRequired?(current)
+        return false
+    }
+
+    var isSignInRequired: Bool { needsSignIn }
 
     /// Wrapper that retries once after token refresh on auth failure (400/401)
     private func authenticatedRequest<T: Decodable>(path: String, method: String = "GET", headers: [String: String]? = nil, body: Data? = nil) async throws -> T {
@@ -180,6 +238,61 @@ actor BeszelAPIClient {
 
         let decoded = try JSONDecoder().decode(BeszelAuthResponse.self, from: data)
         return decoded.token
+    }
+
+    // MARK: - OAuth (PocketBase)
+
+    func authMethods(url: String, fallbackUrl: String? = nil) async throws -> BeszelAuthMethods {
+        var firstError: Error?
+        for base in [Self.cleanURL(url), Self.cleanURL(fallbackUrl ?? "")] where !base.isEmpty {
+            do {
+                guard let target = URL(string: "\(base)/api/collections/users/auth-methods") else { throw APIError.invalidURL }
+                let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 8)
+                let (data, resp) = try await session.data(for: URLRequest(url: target))
+                let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                guard status == 200 else {
+                    throw APIError.httpError(statusCode: status, body: "")
+                }
+                var methods = try JSONDecoder().decode(BeszelAuthMethods.self, from: data)
+                methods.baseURL = base
+                return methods
+            } catch {
+                if firstError == nil { firstError = error }
+            }
+        }
+        throw firstError ?? APIError.invalidURL
+    }
+
+    /// - Parameter email: only needed when the server also asks for an emailed code.
+    func completeOAuth(
+        _ provider: BeszelAuthMethods.Provider, code: String, baseURL: String, email: String?
+    ) async throws -> BeszelOAuthSession {
+        guard let url = URL(string: "\(baseURL)/api/collections/users/auth-with-oauth2") else { throw APIError.invalidURL }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode([
+            "provider": provider.name,
+            "code": code,
+            "codeVerifier": provider.codeVerifier ?? "",
+            "redirectURL": OAuthCallback.redirectURL
+        ])
+        // The server contacts the provider itself, for up to 30 seconds.
+        let session = BaseNetworkEngine.authSession(instanceId: instanceId, allowSelfSigned: storedAllowSelfSigned, timeout: 35)
+        let (data, resp) = try await session.data(for: req)
+        let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if let mfaId = BeszelLogin.mfaId(statusCode: status, data: data) {
+            guard let email, !email.isEmpty else { throw APIError.custom(Translations.current().oauthEmailNeeded) }
+            throw APIError.twoFactorRequired(
+                TwoFactorChallenge(baseURL: baseURL, kind: .email(address: email, mfaId: mfaId, otpId: nil))
+            )
+        }
+        guard status == 200 else {
+            struct Failure: Decodable { let message: String? }
+            let reason = (try? JSONDecoder().decode(Failure.self, from: data))?.message ?? "HTTP \(status)"
+            throw APIError.custom(String(format: Translations.current().oauthRejected, reason))
+        }
+        return try JSONDecoder().decode(BeszelOAuthSession.self, from: data)
     }
 
     // MARK: - Two-factor (PocketBase email OTP)

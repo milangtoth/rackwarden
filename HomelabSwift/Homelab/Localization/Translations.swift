@@ -1218,6 +1218,14 @@ struct Translations {
     let twoFactorResend: String
     let statusNeedsSignIn: String
     let errorTwoFactorInvalid: String
+    let oauthSignIn: String
+    let oauthHint: String
+    let oauthChooseProvider: String
+    let oauthUnavailable: String
+    let oauthInvalidReply: String
+    let oauthDenied: String
+    let oauthRejected: String
+    let oauthEmailNeeded: String
     let errorSignInRequired: String
     let forwardAuthTitle: String
     let forwardAuthDesc: String
