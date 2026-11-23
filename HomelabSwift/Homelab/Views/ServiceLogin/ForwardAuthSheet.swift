@@ -31,10 +31,25 @@ struct ForwardAuthTarget: Identifiable {
     }
 }
 
-/// Browser data of proxy sign-ins, kept per instance so renewing can skip the password.
+/// Browser data of proxy sign-ins. Shared by all services, so one sign-in covers them,
+/// or kept apart per instance when the user turns sharing off.
 @MainActor
 enum ForwardAuthWebData {
-    static func store(for id: UUID) -> WKWebsiteDataStore { WKWebsiteDataStore(forIdentifier: id) }
+    static let sharedId = UUID(uuidString: "5B0E0C0A-6E0D-4F57-9C43-7A1D2C9E8F10")!
+    static let sharingKey = "rackwarden_shared_forward_auth"
+
+    static var isShared: Bool { UserDefaults.standard.object(forKey: sharingKey) as? Bool ?? true }
+
+    /// Held for as long as the app runs: cookies without an expiry die with the last reference.
+    private static var sharedStore: WKWebsiteDataStore?
+
+    static func store(for id: UUID) -> WKWebsiteDataStore {
+        guard isShared else { return WKWebsiteDataStore(forIdentifier: id) }
+        if let sharedStore { return sharedStore }
+        let store = WKWebsiteDataStore(forIdentifier: sharedId)
+        sharedStore = store
+        return store
+    }
 
     private static func identifiers() async -> [UUID] {
         // WebKit crashes when listing stores before it has been initialised.
@@ -42,20 +57,37 @@ enum ForwardAuthWebData {
         return await WKWebsiteDataStore.allDataStoreIdentifiers
     }
 
-    static func remove(_ id: UUID) async {
-        guard await identifiers().contains(id) else { return }
-        await store(for: id).removeData(
-            ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast
-        )
-        // Fails while a web view still uses it; its data is already gone and the next launch retries.
-        try? await WKWebsiteDataStore.remove(forIdentifier: id)
+    /// Forgets one service. A shared sign-in at the identity provider stays, as other services use it.
+    static func remove(_ id: UUID, urls: [String?]) async {
+        await removeStore(id)
+        guard isShared, await identifiers().contains(sharedId) else { return }
+        let hosts = Set(urls.compactMap { AccessOrigin(string: $0)?.host })
+        let cookies = store(for: id).httpCookieStore
+        for cookie in await cookies.allCookies() where ForwardAuth.isSet(cookie, byAnyOf: hosts) {
+            await cookies.deleteCookie(cookie)
+        }
     }
 
-    /// Cleans up after a setup that was interrupted.
+    /// Cleans up after an interrupted setup or a change of the sharing setting.
     static func removeOrphans(keeping known: Set<UUID>) async {
-        for id in await identifiers() where !known.contains(id) {
-            await remove(id)
+        let kept = isShared ? [sharedId] : known
+        for id in await identifiers() where !kept.contains(id) {
+            await removeStore(id)
         }
+    }
+
+    static func removeAll() async {
+        for id in await identifiers() { await removeStore(id) }
+    }
+
+    private static func removeStore(_ id: UUID) async {
+        guard await identifiers().contains(id) else { return }
+        let store = (id == sharedId ? sharedStore : nil) ?? WKWebsiteDataStore(forIdentifier: id)
+        await store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
+        // A store still held in memory cannot be deleted, but its data is gone.
+        guard id != sharedId || sharedStore == nil || !isShared else { return }
+        if id == sharedId { sharedStore = nil }
+        try? await WKWebsiteDataStore.remove(forIdentifier: id)
     }
 }
 

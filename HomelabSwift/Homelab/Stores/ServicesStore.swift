@@ -626,7 +626,7 @@ final class ServicesStore {
         clientManager.removeClient(id: id, type: removed.type)
         expiredProxyOrigins[id] = nil
         AccessProfileStore.shared.set(nil, for: id)
-        Task { await ForwardAuthWebData.remove(id) }
+        Task { await ForwardAuthWebData.remove(id, urls: [removed.url, removed.fallbackUrl]) }
         repairPreferredInstance(for: removed.type)
         persistState()
     }
@@ -1132,10 +1132,31 @@ final class ServicesStore {
 
     func signOutOfProxy(_ instanceId: UUID) async {
         AccessProfileStore.shared.signOut(instanceId)
-        await ForwardAuthWebData.remove(instanceId)
         guard let instance = instancesById[instanceId] else { return }
+        await ForwardAuthWebData.remove(instanceId, urls: [instance.url, instance.fallbackUrl])
         reachabilityByInstanceId[instanceId] = nil
         await checkReachability(for: instance.id)
+    }
+
+    /// Drops browser data the current sharing setting no longer uses. Services stay signed in.
+    func forwardAuthSharingChanged() async {
+        await ForwardAuthWebData.removeOrphans(keeping: Set(instancesById.keys))
+    }
+
+    /// Forgets every proxy sign-in on this device. Custom headers stay.
+    func signOutOfAllProxies() async {
+        await ForwardAuthWebData.removeAll()
+        let ids = allInstances.map(\.id).filter {
+            guard let profile = AccessProfileStore.shared.profile(for: $0) else { return false }
+            return profile.isEnabled && profile.method == .browser
+        }
+        for id in ids {
+            AccessProfileStore.shared.signOut(id)
+            reachabilityByInstanceId[id] = nil
+        }
+        await withTaskGroup(of: Void.self) { group in
+            for id in ids { group.addTask { await self.checkReachability(for: id) } }
+        }
     }
 
     /// Ignores late failures of a session the user has already replaced.

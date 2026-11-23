@@ -276,6 +276,10 @@ final class SettingsStore {
         }
     }
 
+    var sharesForwardAuthSession: Bool = ForwardAuthWebData.isShared {
+        didSet { UserDefaults.standard.set(sharesForwardAuthSession, forKey: ForwardAuthWebData.sharingKey) }
+    }
+
     var checkForUpdatesEnabled: Bool {
         get { UserDefaults.standard.object(forKey: Keys.checkForUpdatesEnabled) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: Keys.checkForUpdatesEnabled) }

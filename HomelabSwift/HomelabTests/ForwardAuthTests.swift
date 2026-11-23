@@ -1,3 +1,4 @@
+import WebKit
 import XCTest
 @testable import Homelab
 
@@ -22,6 +23,71 @@ final class ForwardAuthTests: XCTestCase {
 
         let plain = AccessOrigin(string: "http://app.example.test")!
         XCTAssertTrue(ForwardAuth.cookies([cookie("secure", domain: "app.example.test")], for: plain).isEmpty)
+    }
+
+    func testForgettingOneServiceKeepsSharedCookies() {
+        let hosts: Set<String> = ["app.example.test"]
+        XCTAssertTrue(ForwardAuth.isSet(cookie("a", domain: "app.example.test"), byAnyOf: hosts))
+        XCTAssertTrue(ForwardAuth.isSet(cookie("b", domain: ".app.example.test"), byAnyOf: hosts))
+        for other in [".example.test", "auth.example.test", "other.example.test", "xapp.example.test"] {
+            XCTAssertFalse(ForwardAuth.isSet(cookie("c", domain: other), byAnyOf: hosts), other)
+        }
+    }
+
+    @MainActor
+    func testSharedSignIn() async {
+        let key = ForwardAuthWebData.sharingKey
+        let before = UserDefaults.standard.object(forKey: key)
+        UserDefaults.standard.removeObject(forKey: key)
+        defer { UserDefaults.standard.set(before, forKey: key) }
+        XCTAssertTrue(ForwardAuthWebData.isShared)
+
+        let first = UUID(), second = UUID()
+        let store = ForwardAuthWebData.store(for: first)
+        XCTAssertTrue(store === ForwardAuthWebData.store(for: second))
+        XCTAssertEqual(store.identifier, ForwardAuthWebData.sharedId)
+
+        // Session cookies without an expiry, like a browser-only sign-in.
+        for (name, domain) in [("one", "one.example.test"), ("two", "two.example.test"), ("idp", "auth.example.test")] {
+            await store.httpCookieStore.setCookie(cookie(name, domain: domain))
+        }
+        func names() async -> Set<String> {
+            Set(await ForwardAuthWebData.store(for: first).httpCookieStore.allCookies().map(\.name))
+        }
+        var found = await names()
+        XCTAssertEqual(found, ["one", "two", "idp"])
+
+        await ForwardAuthWebData.remove(first, urls: ["https://one.example.test", nil])
+        found = await names()
+        XCTAssertEqual(found, ["two", "idp"])
+
+        await ForwardAuthWebData.removeOrphans(keeping: [])
+        found = await names()
+        XCTAssertEqual(found, ["two", "idp"])
+
+        await ForwardAuthWebData.removeAll()
+        found = await names()
+        XCTAssertTrue(found.isEmpty)
+    }
+
+    @MainActor
+    func testTurningSharingOffSeparatesServices() async {
+        let key = ForwardAuthWebData.sharingKey
+        let before = UserDefaults.standard.object(forKey: key)
+        defer { UserDefaults.standard.set(before, forKey: key) }
+        UserDefaults.standard.set(true, forKey: key)
+        await ForwardAuthWebData.store(for: UUID()).httpCookieStore.setCookie(cookie("idp", domain: "auth.example.test"))
+
+        UserDefaults.standard.set(false, forKey: key)
+        await ForwardAuthWebData.removeOrphans(keeping: [])
+        let first = UUID(), second = UUID()
+        XCTAssertEqual(ForwardAuthWebData.store(for: first).identifier, first)
+        XCTAssertEqual(ForwardAuthWebData.store(for: second).identifier, second)
+
+        UserDefaults.standard.set(true, forKey: key)
+        let left = await ForwardAuthWebData.store(for: first).httpCookieStore.allCookies()
+        XCTAssertTrue(left.isEmpty, "The shared sign-in must not come back")
+        await ForwardAuthWebData.removeAll()
     }
 
     func testProxyPagesAreNotServicePages() {

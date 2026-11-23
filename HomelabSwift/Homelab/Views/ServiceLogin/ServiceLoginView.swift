@@ -330,7 +330,7 @@ struct ServiceLoginView: View {
                         await servicesStore.signOutOfProxy(existingInstanceId)
                         AccessProfileStore.shared.beginDraft(draftInstanceId, copying: existingInstanceId)
                     } else {
-                        await ForwardAuthWebData.remove(draftInstanceId)
+                        await ForwardAuthWebData.remove(draftInstanceId, urls: [normalizedURL(url), normalizedURL(fallbackUrl)])
                     }
                 }
             }
@@ -557,7 +557,8 @@ struct ServiceLoginView: View {
     private func removeUnusedWebData() {
         let id = existingInstanceId ?? draftInstanceId
         guard AccessProfileStore.shared.profile(for: id)?.isEnabled != true else { return }
-        Task { await ForwardAuthWebData.remove(id) }
+        let urls: [String?] = [normalizedURL(url), normalizedURL(fallbackUrl)]
+        Task { await ForwardAuthWebData.remove(id, urls: urls) }
     }
 
     private var loginHint: String? {

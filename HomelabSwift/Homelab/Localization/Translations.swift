@@ -1310,6 +1310,11 @@ struct Translations {
     let forwardAuthNeedsLogin: String
     let forwardAuthOffer: String
     let forwardAuthOfferButton: String
+    let forwardAuthSettingsTitle: String
+    let forwardAuthShare: String
+    let forwardAuthShareDesc: String
+    let forwardAuthSignOutAll: String
+    let forwardAuthSignOutAllMessage: String
     let errorBothFailed: String
     let errorUnknown: String
     let errorAtsRequiresSecure: String

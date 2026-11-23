@@ -20,6 +20,8 @@ struct SettingsView: View {
     @State private var showDebugAuthPin = false
     @State private var debugAuthPin = ""
     @State private var debugAuthError: String? = nil
+    @State private var confirmsProxySignOut = false
+    @State private var isSigningOutOfProxies = false
     var body: some View {
         NavigationStack {
             ZStack {
@@ -44,6 +46,7 @@ struct SettingsView: View {
 
                             languageSection
                             securitySection
+                            forwardAuthSection
                             backupSection
                             contactsSection
                             debugSection
@@ -617,6 +620,85 @@ struct SettingsView: View {
         }
         .fullScreenCover(isPresented: $showChangePinFlow) {
             changePinView
+        }
+    }
+
+    // MARK: - Forward Auth Section
+
+    private var forwardAuthSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(localizer.t.forwardAuthSettingsTitle)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundStyle(AppTheme.accent)
+                .padding(.leading, 8)
+                .padding(.top, 16)
+
+            VStack(spacing: 0) {
+                HStack {
+                    Image(systemName: "person.2.badge.key.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppTheme.accent)
+                        .frame(width: 32, height: 32)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localizer.t.forwardAuthShare)
+                            .font(.body.weight(.medium))
+                        Text(localizer.t.forwardAuthShareDesc)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Toggle(localizer.t.forwardAuthShare, isOn: Binding(
+                        get: { settingsStore.sharesForwardAuthSession },
+                        set: { enabled in
+                            settingsStore.sharesForwardAuthSession = enabled
+                            Task { await servicesStore.forwardAuthSharingChanged() }
+                        }
+                    ))
+                    .labelsHidden()
+                    .tint(AppTheme.accent)
+                }
+                .padding(16)
+
+                Divider().padding(.horizontal, 16)
+
+                Button {
+                    confirmsProxySignOut = true
+                } label: {
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.title3)
+                            .foregroundStyle(AppTheme.danger)
+                            .frame(width: 32, height: 32)
+                            .accessibilityHidden(true)
+                        Text(localizer.t.forwardAuthSignOutAll)
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(AppTheme.danger)
+                        Spacer()
+                        if isSigningOutOfProxies { ProgressView() }
+                    }
+                    .padding(16)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(isSigningOutOfProxies)
+                .confirmationDialog(
+                    localizer.t.forwardAuthSignOutAllMessage, isPresented: $confirmsProxySignOut, titleVisibility: .visible
+                ) {
+                    Button(localizer.t.forwardAuthSignOutAll, role: .destructive) {
+                        isSigningOutOfProxies = true
+                        Task {
+                            await servicesStore.signOutOfAllProxies()
+                            isSigningOutOfProxies = false
+                        }
+                    }
+                }
+            }
+            .glassCard()
         }
     }
 

@@ -92,6 +92,12 @@ enum ForwardAuth {
         .map { AccessCookie(name: $0.name, value: $0.value, path: $0.path, expiresAt: $0.expiresDate) }
     }
 
+    /// True for cookies that belong to one of these hosts, not to a domain they share with others.
+    static func isSet(_ cookie: HTTPCookie, byAnyOf hosts: Set<String>) -> Bool {
+        let domain = cookie.domain.lowercased()
+        return hosts.contains(domain.hasPrefix(".") ? String(domain.dropFirst()) : domain)
+    }
+
     /// Compares the service's answer with and without the proxy credentials.
     static func probe(
         url: URL,
