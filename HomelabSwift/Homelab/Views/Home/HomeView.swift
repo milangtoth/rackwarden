@@ -8,6 +8,7 @@ struct HomeView: View {
 
     @State private var showLogin: ServiceType? = nil
     @State private var signInContext: ServiceEditorContext?
+    @State private var proxySignIn: ForwardAuthTarget?
     @State private var showingServiceOrder = false
 
     // Summary data (integrated into cards), keyed by instance UUID
@@ -93,6 +94,11 @@ struct HomeView: View {
             }
             .sheet(item: $signInContext) { context in
                 ServiceLoginView(serviceType: context.serviceType, existingInstanceId: context.instanceId)
+            }
+            .sheet(item: $proxySignIn) { target in
+                ForwardAuthSheet(target: target) { access in
+                    Task { await servicesStore.renewProxySession(target.instanceId, access: access) }
+                }
             }
             .sheet(isPresented: $showingServiceOrder) {
                 ServiceOrderSheet()
@@ -290,7 +296,12 @@ struct HomeView: View {
                         Group {
                             if servicesStore.needsSignIn(instance.id) {
                                 Button {
-                                    signInContext = ServiceEditorContext(serviceType: type, instanceId: instance.id)
+                                    if let url = servicesStore.expiredProxyURL(instance.id),
+                                       let target = ForwardAuthTarget(renewing: url, instance: instance) {
+                                        proxySignIn = target
+                                    } else {
+                                        signInContext = ServiceEditorContext(serviceType: type, instanceId: instance.id)
+                                    }
                                 } label: {
                                     card
                                 }

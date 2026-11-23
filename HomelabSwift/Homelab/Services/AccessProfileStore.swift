@@ -23,6 +23,23 @@ final class AccessProfileStore: @unchecked Sendable {
         lock.withLock { drafts[id] ?? current()[id] }
     }
 
+    /// Removes the saved session cookies; headers and settings stay.
+    func signOut(_ id: UUID) {
+        lock.withLock { store(current()[id]?.withoutCookies, for: id) }
+    }
+
+    /// Replaces the credentials of one origin. Returns false if it is no longer in use.
+    @discardableResult
+    func update(_ access: OriginAccess, for id: UUID) -> Bool {
+        lock.withLock {
+            guard var profile = current()[id], profile.isEnabled else { return false }
+            profile.origins.removeAll { $0.origin == access.origin }
+            profile.origins.append(access)
+            store(profile, for: id)
+            return true
+        }
+    }
+
     func set(_ profile: AccessProfile?, for id: UUID) {
         lock.withLock { store(profile, for: id) }
     }

@@ -415,6 +415,8 @@ final class ServicesStore {
     private(set) var pingingByInstanceId: [UUID: Bool] = [:]
     /// Instances whose session can only be renewed by the user, for example with a 2FA code.
     private(set) var needsSignInIds: Set<UUID> = []
+    /// Instances whose proxy session ended, with the address that asked for a sign-in.
+    private(set) var expiredProxyOrigins: [UUID: AccessOrigin] = [:]
     private(set) var isTailscaleConnected: Bool = false
 
     private var lastReachabilityCheck: Date?
@@ -446,6 +448,18 @@ final class ServicesStore {
                 await self?.handleUnauthorized(instanceId: instanceId)
             }
         }
+        NotificationCenter.default.addObserver(
+            forName: .forwardAuthExpired,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let instanceId = notification.userInfo?["instanceId"] as? UUID,
+                  let profile = notification.userInfo?["profile"] as? AccessProfile,
+                  let origin = notification.userInfo?["origin"] as? AccessOrigin else { return }
+            Task { @MainActor in
+                self?.markProxyExpired(instanceId, origin: origin, profile: profile)
+            }
+        }
     }
 
     func initialize() async {
@@ -472,6 +486,9 @@ final class ServicesStore {
 
         isReady = true
 
+        Task {
+            await ForwardAuthWebData.removeOrphans(keeping: Set(instancesById.keys))
+        }
         Task {
             await checkAllReachability()
             await checkTailscale()
@@ -557,6 +574,7 @@ final class ServicesStore {
         let previous = instancesById[normalized.id]
         instancesById[normalized.id] = normalized
         needsSignInIds.remove(normalized.id)
+        expiredProxyOrigins[normalized.id] = nil
 
         if previous?.type != normalized.type {
             repairPreferredInstance(for: previous?.type)
@@ -580,7 +598,9 @@ final class ServicesStore {
         pingingByInstanceId.removeValue(forKey: id)
         needsSignInIds.remove(id)
         clientManager.removeClient(id: id, type: removed.type)
+        expiredProxyOrigins[id] = nil
         AccessProfileStore.shared.set(nil, for: id)
+        Task { await ForwardAuthWebData.remove(id) }
         repairPreferredInstance(for: removed.type)
         persistState()
     }
@@ -1033,7 +1053,39 @@ final class ServicesStore {
     }
 
     func needsSignIn(_ instanceId: UUID) -> Bool {
-        needsSignInIds.contains(instanceId)
+        needsSignInIds.contains(instanceId) || expiredProxyURL(instanceId) != nil
+    }
+
+    /// The address to sign in to again, unless the service is still reachable another way.
+    func expiredProxyURL(_ instanceId: UUID) -> URL? {
+        guard let instance = instancesById[instanceId], let origin = expiredProxyOrigins[instanceId],
+              reachability(for: instanceId) != true else { return nil }
+        return [instance.url, instance.fallbackUrl].compactMap { $0 }
+            .first { AccessOrigin(string: $0) == origin }
+            .flatMap { URL(string: $0) }
+    }
+
+    /// Ignores late failures of credentials the user has already replaced.
+    private func markProxyExpired(_ instanceId: UUID, origin: AccessOrigin, profile: AccessProfile) {
+        guard instancesById[instanceId] != nil, expiredProxyOrigins[instanceId] == nil,
+              AccessProfileStore.shared.profile(for: instanceId) == profile else { return }
+        expiredProxyOrigins[instanceId] = origin
+        Task { await checkReachability(for: instanceId) }
+    }
+
+    /// Pass `nil` when the proxy no longer asks for a sign-in.
+    func renewProxySession(_ instanceId: UUID, access: OriginAccess?) async {
+        if let access { AccessProfileStore.shared.update(access, for: instanceId) }
+        expiredProxyOrigins[instanceId] = nil
+        await checkReachability(for: instanceId)
+    }
+
+    func signOutOfProxy(_ instanceId: UUID) async {
+        AccessProfileStore.shared.signOut(instanceId)
+        await ForwardAuthWebData.remove(instanceId)
+        guard let instance = instancesById[instanceId] else { return }
+        reachabilityByInstanceId[instanceId] = nil
+        await checkReachability(for: instance.id)
     }
 
     /// Ignores late failures of a session the user has already replaced.

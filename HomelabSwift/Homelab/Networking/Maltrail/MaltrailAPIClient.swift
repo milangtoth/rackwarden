@@ -511,7 +511,7 @@ actor MaltrailAPIClient {
            contentType.contains("text/html"),
            let body = String(data: data.prefix(500), encoding: .utf8),
            body.lowercased().contains("<html") {
-            throw APIError.custom("Received an HTML response instead of JSON. This often happens when authentication is still required.")
+            throw APIError.custom(Translations.current().errorHtmlResponse)
         }
     }
 

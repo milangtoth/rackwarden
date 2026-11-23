@@ -936,7 +936,6 @@ struct Translations {
     let npmSaveSuccess: String
     let npmDeleteSuccess: String
     let npmRenewSuccess: String
-    let loginHintNpm2FAWarning: String
 
     // Units
     let unitDays: String
@@ -1220,6 +1219,37 @@ struct Translations {
     let statusNeedsSignIn: String
     let errorTwoFactorInvalid: String
     let errorSignInRequired: String
+    let forwardAuthTitle: String
+    let forwardAuthDesc: String
+    let forwardAuthSignIn: String
+    let forwardAuthConnected: String
+    let forwardAuthSignInAgain: String
+    let forwardAuthConnectFirst: String
+    let forwardAuthNotNeeded: String
+    let forwardAuthBlocked: String
+    let forwardAuthInsecure: String
+    let errorHtmlResponse: String
+    let forwardAuthUseHttps: String
+    let forwardAuthMethodBrowser: String
+    let forwardAuthMethodHeaders: String
+    let forwardAuthHeaderName: String
+    let forwardAuthHeaderValue: String
+    let forwardAuthAddHeader: String
+    let forwardAuthHeaderInvalid: String
+    let forwardAuthHeadersBlocked: String
+    let forwardAuthTestHeaders: String
+    let forwardAuthFallback: String
+    let forwardAuthFallbackNotNeeded: String
+    let forwardAuthSignOut: String
+    let forwardAuthSignOutMessage: String
+    let forwardAuthTurnOff: String
+    let forwardAuthTurnOffTitle: String
+    let forwardAuthTurnOffMessage: String
+    let forwardAuthSkipLogin: String
+    let forwardAuthSkipLoginDesc: String
+    let forwardAuthNeedsLogin: String
+    let forwardAuthOffer: String
+    let forwardAuthOfferButton: String
     let errorBothFailed: String
     let errorUnknown: String
     let errorAtsRequiresSecure: String

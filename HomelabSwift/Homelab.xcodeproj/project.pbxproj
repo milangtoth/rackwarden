@@ -124,6 +124,8 @@
 		A08D2B6FBC3D9252E47321FF /* AdGuardHomeUserRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44370CC6FB6ADE55FA632A02 /* AdGuardHomeUserRulesView.swift */; };
 		A15E4596A2950B61F233E229 /* UptimeKumaDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18C16B119CB2EDEE60B4784D /* UptimeKumaDashboard.swift */; };
 		A1B0DB1FF6B1CB2BEB21B2CE /* KeychainServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */; };
+		7AC3E5500000000000000BA8 /* ForwardAuthTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA8 /* ForwardAuthTests.swift */; };
+		7AC3E5500000000000000BAA /* TrueNASClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FAA /* TrueNASClientTests.swift */; };
 		7AC3E5500000000000000BA5 /* TwoFactorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA5 /* TwoFactorTests.swift */; };
 		7AC3E5500000000000000BA2 /* AccessProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA2 /* AccessProfileTests.swift */; };
 		A283181CEA487B0C8346D967 /* PiHoleAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = B236EC8434642BB311F3E1A8 /* PiHoleAPIClient.swift */; };
@@ -154,6 +156,7 @@
 		C462B63CC5FE35CD624ADFCD /* NpmStreamCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8904009FE0CC197DE3B1492A /* NpmStreamCard.swift */; };
 		C6542378592F0A5E5B44BFB7 /* DockmonDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB334FC7E3B327B41891F806 /* DockmonDashboard.swift */; };
 		C86FF5E6A543278A18B16E9B /* APIError.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB95F4E19C7D3082B4D6484C /* APIError.swift */; };
+		7AC3E5500000000000000BA6 /* ForwardAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA6 /* ForwardAuth.swift */; };
 		7AC3E5500000000000000BA3 /* TwoFactor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA3 /* TwoFactor.swift */; };
 		C97E7FCF77033F146747AF2E /* UniFiClientsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADE20E665B54E273AB66E450 /* UniFiClientsView.swift */; };
 		CC23054F0C872CC583502288 /* MaltrailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0DE4821BAECE125BF5D455F /* MaltrailModels.swift */; };
@@ -180,6 +183,8 @@
 		E41C86CEB570A40EFB82ED17 /* WakapiDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4742ECB110ED743BABA54DEE /* WakapiDashboard.swift */; };
 		E518D45F6F1F6DE81BD0F398 /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 292913B0F73994A51217D87F /* BackupView.swift */; };
 		E5242DCA4ACD2835153FBB96 /* ServiceLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1F09E5D4D69F8311840E4F /* ServiceLoginView.swift */; };
+		7AC3E5500000000000000BA7 /* ForwardAuthSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA7 /* ForwardAuthSheet.swift */; };
+		7AC3E5500000000000000BA9 /* ForwardAuthSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA9 /* ForwardAuthSection.swift */; };
 		7AC3E5500000000000000BA4 /* TwoFactorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AC3E5500000000000000FA4 /* TwoFactorSheet.swift */; };
 		E6E04DD8242F5252CD32CCAB /* ServiceType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E6FEE939313E58D34CE4BDB /* ServiceType.swift */; };
 		E75363C9B789E7FFC1024F51 /* LidarrDashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 794B793766A1B499D331C639 /* LidarrDashboard.swift */; };
@@ -286,6 +291,8 @@
 		5A59E69E9542AF07ED998399 /* ProxmoxNodeDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxNodeDetailView.swift; sourceTree = "<group>"; };
 		5EF76E1EC7E853732127B6AA /* ProxmoxGuestDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxGuestDetailView.swift; sourceTree = "<group>"; };
 		5F1F09E5D4D69F8311840E4F /* ServiceLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceLoginView.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA7 /* ForwardAuthSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuthSheet.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA9 /* ForwardAuthSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuthSection.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FA4 /* TwoFactorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFactorSheet.swift; sourceTree = "<group>"; };
 		5F7EDC22BCE4C069B41BA65C /* RadarrModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RadarrModels.swift; sourceTree = "<group>"; };
 		6159D00710B8E9BA71CAFDC0 /* CalagopusAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalagopusAPIClient.swift; sourceTree = "<group>"; };
@@ -347,6 +354,7 @@
 		A8C246817EA53ED0E3950005 /* ProxmoxBackupJobsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxBackupJobsView.swift; sourceTree = "<group>"; };
 		AA26C2B4C3B48757F16F0E7B /* ProxmoxPoolDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxmoxPoolDetailView.swift; sourceTree = "<group>"; };
 		AB95F4E19C7D3082B4D6484C /* APIError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIError.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA6 /* ForwardAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuth.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FA3 /* TwoFactor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFactor.swift; sourceTree = "<group>"; };
 		AD139A00611FED93C43C0833 /* HealthchecksModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthchecksModels.swift; sourceTree = "<group>"; };
 		ADE20E665B54E273AB66E450 /* UniFiClientsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniFiClientsView.swift; sourceTree = "<group>"; };
@@ -403,6 +411,8 @@
 		FC6C069732CC13919CD60F36 /* Translations+French.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Translations+French.swift"; sourceTree = "<group>"; };
 		FC89D463559422B61BC300AF /* ContainerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContainerDetailView.swift; sourceTree = "<group>"; };
 		FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FA8 /* ForwardAuthTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForwardAuthTests.swift; sourceTree = "<group>"; };
+		7AC3E5500000000000000FAA /* TrueNASClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrueNASClientTests.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FA5 /* TwoFactorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwoFactorTests.swift; sourceTree = "<group>"; };
 		7AC3E5500000000000000FA2 /* AccessProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessProfileTests.swift; sourceTree = "<group>"; };
 		FDFB37C2FF152CEF28395F2C /* UniFiDashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UniFiDashboard.swift; sourceTree = "<group>"; };
@@ -709,6 +719,8 @@
 			isa = PBXGroup;
 			children = (
 				5F1F09E5D4D69F8311840E4F /* ServiceLoginView.swift */,
+				7AC3E5500000000000000FA7 /* ForwardAuthSheet.swift */,
+				7AC3E5500000000000000FA9 /* ForwardAuthSection.swift */,
 				7AC3E5500000000000000FA4 /* TwoFactorSheet.swift */,
 			);
 			path = ServiceLogin;
@@ -1198,6 +1210,7 @@
 			children = (
 				FEF389260911EADF7079A97B /* APIClient.swift */,
 				AB95F4E19C7D3082B4D6484C /* APIError.swift */,
+				7AC3E5500000000000000FA6 /* ForwardAuth.swift */,
 				7AC3E5500000000000000FA3 /* TwoFactor.swift */,
 				34351F37F1A0778D6CFC90B3 /* GenericAPIClient.swift */,
 				0FF3AB848856515A57C1F122 /* AdGuardHome */,
@@ -1247,6 +1260,8 @@
 				A1C0C96DF48BA12ABCC04C11 /* BackupModelsTests.swift */,
 				DB311F83CBAAC39C90D50E6D /* FormattersTests.swift */,
 				FCD7BB9B1065930082265D21 /* KeychainServiceTests.swift */,
+				7AC3E5500000000000000FA8 /* ForwardAuthTests.swift */,
+				7AC3E5500000000000000FAA /* TrueNASClientTests.swift */,
 				7AC3E5500000000000000FA5 /* TwoFactorTests.swift */,
 				7AC3E5500000000000000FA2 /* AccessProfileTests.swift */,
 				94D7A0C04FD3A10D46F836A9 /* ModelDecodingTests.swift */,
@@ -1450,6 +1465,7 @@
 			files = (
 				63A39B89AC9B8F48B3BC3147 /* APIClient.swift in Sources */,
 				C86FF5E6A543278A18B16E9B /* APIError.swift in Sources */,
+				7AC3E5500000000000000BA6 /* ForwardAuth.swift in Sources */,
 				7AC3E5500000000000000BA3 /* TwoFactor.swift in Sources */,
 				A9AED87CFEFFDD6E065E3A0A /* AdGuardHomeAPIClient.swift in Sources */,
 				5739C0189A11AB2E9F581D4C /* AdGuardHomeBlockedServicesView.swift in Sources */,
@@ -1601,6 +1617,8 @@
 				CE78DBCA639D954A7CCB26D3 /* ServiceErrorView.swift in Sources */,
 				D3FEA9D2C02EFC910D98FEB9 /* ServiceIconView.swift in Sources */,
 				E5242DCA4ACD2835153FBB96 /* ServiceLoginView.swift in Sources */,
+				7AC3E5500000000000000BA7 /* ForwardAuthSheet.swift in Sources */,
+				7AC3E5500000000000000BA9 /* ForwardAuthSection.swift in Sources */,
 				7AC3E5500000000000000BA4 /* TwoFactorSheet.swift in Sources */,
 				E6E04DD8242F5252CD32CCAB /* ServiceType.swift in Sources */,
 				BAA4219103CC83A339C434BD /* ServicesStore.swift in Sources */,
@@ -1642,6 +1660,8 @@
 				83C02FB2B277928F3C9E720A /* BackupModelsTests.swift in Sources */,
 				D76DF8769FE2AE2032847D05 /* FormattersTests.swift in Sources */,
 				A1B0DB1FF6B1CB2BEB21B2CE /* KeychainServiceTests.swift in Sources */,
+				7AC3E5500000000000000BA8 /* ForwardAuthTests.swift in Sources */,
+				7AC3E5500000000000000BAA /* TrueNASClientTests.swift in Sources */,
 				7AC3E5500000000000000BA5 /* TwoFactorTests.swift in Sources */,
 				7AC3E5500000000000000BA2 /* AccessProfileTests.swift in Sources */,
 				D84F9D353E2953087A1E5F7D /* ModelDecodingTests.swift in Sources */,

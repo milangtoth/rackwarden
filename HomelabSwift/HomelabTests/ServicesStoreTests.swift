@@ -131,8 +131,9 @@ final class ServicesStoreTests: XCTestCase {
             token: "token-secondary"
         )
 
-        await store.saveInstance(first)
-        await store.saveInstance(second)
+        // No live checks: their result would race with the assertions below.
+        await store.saveInstance(first, triggerReachabilityCheck: false)
+        await store.saveInstance(second, triggerReachabilityCheck: false)
 
         NotificationCenter.default.post(
             name: .serviceUnauthorized,

@@ -483,11 +483,16 @@ struct TrueNASDashboard: View {
             return
         }
 
-        state = .loading
+        // Replacing the scroll view while it refreshes would cancel the refresh.
+        let instanceId = selectedInstanceId
+        if snapshot == nil { state = .loading }
         do {
-            snapshot = try await client.getDashboardSnapshot()
+            let loaded = try await client.getDashboardSnapshot()
+            guard instanceId == selectedInstanceId else { return }
+            snapshot = loaded
             state = .loaded(())
         } catch {
+            guard !Task.isCancelled, instanceId == selectedInstanceId else { return }
             state = .error(error as? APIError ?? .networkError(error))
         }
     }

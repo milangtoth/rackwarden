@@ -4,6 +4,7 @@ import Foundation
 
 extension Notification.Name {
     static let serviceUnauthorized = Notification.Name("serviceUnauthorized")
+    static let forwardAuthExpired = Notification.Name("forwardAuthExpired")
 }
 
 // MARK: - Base networking engine (used via composition, NOT inheritance)
@@ -49,11 +50,12 @@ final class BaseNetworkEngine: Sendable {
     private static func makeSession(
         delegate: URLSessionDelegate,
         timeout: TimeInterval,
+        totalTimeout: TimeInterval? = nil,
         cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy
     ) -> URLSession {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = timeout
-        config.timeoutIntervalForResource = timeout
+        config.timeoutIntervalForResource = totalTimeout ?? timeout
         config.httpShouldSetCookies = false
         config.httpCookieAcceptPolicy = .never
         config.requestCachePolicy = cachePolicy
@@ -61,9 +63,11 @@ final class BaseNetworkEngine: Sendable {
     }
 
     /// Session for calls made outside the engine, such as logins and WebSockets.
-    static func authSession(instanceId: UUID, allowSelfSigned: Bool, timeout: TimeInterval) -> AccessSession {
+    static func authSession(instanceId: UUID, allowSelfSigned: Bool, timeout: TimeInterval, totalTimeout: TimeInterval? = nil) -> AccessSession {
         AccessSession(
-            session: makeSession(delegate: allowSelfSigned ? insecureDelegate : secureDelegate, timeout: timeout),
+            session: makeSession(
+                delegate: allowSelfSigned ? insecureDelegate : secureDelegate, timeout: timeout, totalTimeout: totalTimeout
+            ),
             instanceId: instanceId,
             allowSelfSigned: allowSelfSigned
         )
@@ -365,7 +369,7 @@ final class BaseNetworkEngine: Sendable {
             // Check if this is a known HTML error or a potential login page
             let bodySnippet = data.flatMap { String(data: $0.prefix(500), encoding: .utf8) } ?? ""
             if bodySnippet.lowercased().contains("<html") {
-                 throw APIError.custom("Received an HTML response instead of JSON. This often happens when the service is behind a login page or proxy (OAuth/SSO). Please check your configuration.")
+                 throw APIError.custom(Translations.current().errorHtmlResponse)
             }
         }
 
@@ -400,9 +404,12 @@ struct AccessSession: Sendable {
 
     func data(for request: URLRequest) async throws -> (Data, URLResponse) {
         guard let (prepared, guardian) = try prepare(request) else {
-            return try await session.data(for: request)
+            let result = try await session.data(for: request)
+            if ForwardAuth.isLoginPage(result.1, requested: request.url) { throw APIError.forwardAuthRequired }
+            return result
         }
         let result = try await session.data(for: prepared, delegate: guardian)
+        if guardian.needsHTTPS { throw APIError.custom(Translations.current().forwardAuthUseHttps) }
         if guardian.wasBlocked { throw APIError.forwardAuthRequired }
         return result
     }
@@ -420,7 +427,14 @@ struct AccessSession: Sendable {
         guard let profile = AccessProfileStore.shared.profile(for: instanceId),
               let prepared = try profile.prepared(request, allowSelfSigned: allowSelfSigned),
               let url = prepared.url, let origin = AccessOrigin(url: url) else { return nil }
-        return (prepared, RedirectGuard(origin: origin))
+        let instanceId = instanceId
+        return (prepared, RedirectGuard(origin: origin) {
+            NotificationCenter.default.post(
+                name: .forwardAuthExpired,
+                object: nil,
+                userInfo: ["instanceId": instanceId, "profile": profile, "origin": origin]
+            )
+        })
     }
 }
 
@@ -428,17 +442,29 @@ struct AccessSession: Sendable {
 final class RedirectGuard: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     private let origin: AccessOrigin
     private let lock = NSLock()
+    private let onBlocked: @Sendable () -> Void
     private var blocked = false
+    private var upgrade = false
 
-    init(origin: AccessOrigin) {
+    init(origin: AccessOrigin, onBlocked: @escaping @Sendable () -> Void = {}) {
         self.origin = origin
+        self.onBlocked = onBlocked
     }
 
     var wasBlocked: Bool { lock.withLock { blocked } }
+    /// The address only redirects to its https version, so it is not a sign-in.
+    var needsHTTPS: Bool { lock.withLock { upgrade } }
 
     func allows(_ url: URL?) -> Bool {
-        if let url, AccessOrigin(url: url) == origin { return true }
+        let target = url.flatMap { AccessOrigin(url: $0) }
+        if target == origin, !ForwardAuth.isProxyPath(url?.path ?? "") { return true }
+        if let target, target.host == origin.host, target.isEncrypted, !origin.isEncrypted,
+           target.port == 443, origin.port == 80, !ForwardAuth.isProxyPath(url?.path ?? "") {
+            lock.withLock { upgrade = true }
+            return false
+        }
         lock.withLock { blocked = true }
+        onBlocked()
         return false
     }
 

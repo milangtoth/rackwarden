@@ -33,6 +33,8 @@ struct ServiceLoginView: View {
     @State private var unifiAuthMode: UniFiAuthMode = .siteManager
     @State private var showUniFiDemo = false
     @State private var twoFactorPrompt: TwoFactorPrompt?
+    @State private var forwardAuth = ForwardAuthForm()
+    @State private var offersForwardAuth = false
 
     private var existingInstance: ServiceInstance? {
         existingInstanceId.flatMap { servicesStore.instance(id: $0) }
@@ -157,11 +159,13 @@ struct ServiceLoginView: View {
             .task {
                 prefillIfNeeded()
                 AccessProfileStore.shared.beginDraft(draftInstanceId, copying: existingInstanceId)
+                forwardAuth.load(AccessProfileStore.shared.profile(for: draftInstanceId))
             }
             .onDisappear {
                 // A login in progress still needs its draft.
                 if !isLoading {
                     AccessProfileStore.shared.discardDraft(draftInstanceId)
+                    removeUnusedWebData()
                 }
             }
             .sheet(item: $twoFactorPrompt) { prompt in
@@ -241,23 +245,6 @@ struct ServiceLoginView: View {
                             .stroke(AppTheme.info.opacity(0.2), lineWidth: 1)
                     )
 
-                    if serviceType == .nginxProxyManager {
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(AppTheme.danger)
-                                .font(.subheadline)
-                            Text(localizer.t.loginHintNpm2FAWarning)
-                                .font(.caption)
-                                .foregroundStyle(AppTheme.danger)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background(AppTheme.danger.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(AppTheme.danger.opacity(0.2), lineWidth: 1)
-                        )
-                    }
                 }
             }
 
@@ -304,13 +291,45 @@ struct ServiceLoginView: View {
                     text: $fallbackUrl,
                     keyboardType: .URL
                 )
+
+                if offersForwardAuth && !usesForwardAuth {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(localizer.t.forwardAuthOffer)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.warning)
+                        Button(localizer.t.forwardAuthOfferButton) {
+                            errorMessage = nil
+                            allowSelfSigned = false
+                            forwardAuth.isOn = true
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ForwardAuthSection(
+                    form: forwardAuth,
+                    serviceType: serviceType,
+                    instanceId: existingInstanceId ?? draftInstanceId,
+                    url: URL(string: normalizedURL(url)),
+                    fallbackURL: URL(string: normalizedURL(fallbackUrl)),
+                    allowSelfSigned: $allowSelfSigned
+                ) {
+                    if let existingInstanceId {
+                        AccessProfileStore.shared.setDraft(nil, for: draftInstanceId)
+                        await servicesStore.signOutOfProxy(existingInstanceId)
+                        AccessProfileStore.shared.beginDraft(draftInstanceId, copying: existingInstanceId)
+                    } else {
+                        await ForwardAuthWebData.remove(draftInstanceId)
+                    }
+                }
             }
 
             if serviceType == .unifiNetwork {
                 unifiAuthSection
             }
 
-            if supportsOptionalApiKey {
+            if supportsOptionalApiKey, !skipsNativeLogin {
                 InputField(
                     icon: "key.fill",
                     placeholder: localizer.t.loginApiKey,
@@ -322,7 +341,9 @@ struct ServiceLoginView: View {
                 )
             }
 
-            if isProxmox {
+            if skipsNativeLogin {
+                EmptyView()
+            } else if isProxmox {
                 proxmoxAuthSection
             } else if usesKomodoAuth {
                 InputField(
@@ -474,6 +495,42 @@ struct ServiceLoginView: View {
         .offset(x: shakeOffset)
     }
 
+    private var usesForwardAuth: Bool {
+        forwardAuth.isOn && (serviceType != .unifiNetwork || unifiAuthMode == .localNetwork)
+    }
+
+    private var skipsNativeLogin: Bool {
+        usesForwardAuth && forwardAuth.skipsNativeLogin && ForwardAuth.canSkipNativeLogin(serviceType)
+    }
+
+    /// Makes the proxy credentials available to this setup only; saving keeps them.
+    private func applyForwardAuthDraft() throws {
+        guard usesForwardAuth else {
+            let hadProfile = AccessProfileStore.shared.profile(for: draftInstanceId) != nil
+            AccessProfileStore.shared.setDraft(hadProfile ? AccessProfile() : nil, for: draftInstanceId)
+            return
+        }
+        // Choosing a login can make a header that was fine before unusable.
+        if forwardAuth.method == .headers, let invalid = forwardAuth.firstInvalidHeader(for: serviceType) {
+            throw APIError.custom(String(format: localizer.t.forwardAuthHeaderInvalid, invalid.name))
+        }
+        guard let profile = forwardAuth.profile(
+            primary: AccessOrigin(string: normalizedURL(url)),
+            fallback: AccessOrigin(string: normalizedOptionalURL(fallbackUrl)),
+            allowSelfSigned: allowSelfSigned
+        ) else {
+            throw APIError.custom(localizer.t.forwardAuthConnectFirst)
+        }
+        AccessProfileStore.shared.setDraft(profile, for: draftInstanceId)
+    }
+
+    /// A cancelled setup or a service without forward auth keeps no browser session.
+    private func removeUnusedWebData() {
+        let id = existingInstanceId ?? draftInstanceId
+        guard AccessProfileStore.shared.profile(for: id)?.isEnabled != true else { return }
+        Task { await ForwardAuthWebData.remove(id) }
+    }
+
     private var loginHint: String? {
         switch serviceType {
         case .portainer:         return localizer.t.loginHintPortainer
@@ -610,13 +667,23 @@ struct ServiceLoginView: View {
         let cleanFallback = normalizedOptionalURL(fallbackUrl)
         let cleanLabel = label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? serviceType.displayName : label.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        do {
+            try applyForwardAuthDraft()
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+
         HapticManager.medium()
         isLoading = true
 
         Task {
             do {
-                let instance = try await buildInstance(label: cleanLabel, url: cleanUrl, fallbackUrl: cleanFallback)
+                let instance = skipsNativeLogin
+                    ? try await buildInstanceWithoutLogin(label: cleanLabel, url: cleanUrl, fallbackUrl: cleanFallback)
+                    : try await buildInstance(label: cleanLabel, url: cleanUrl, fallbackUrl: cleanFallback)
                 AccessProfileStore.shared.commitDraft(draftInstanceId, to: instance)
+                removeUnusedWebData()
                 await servicesStore.saveInstance(instance, refreshPiHoleAuth: false)
                 HapticManager.success()
                 dismiss()
@@ -624,6 +691,9 @@ struct ServiceLoginView: View {
                 // The user closed the code prompt.
             } catch {
                 showError(resolveErrorMessage(error))
+                if !usesForwardAuth, let target = URL(string: cleanUrl) {
+                    offersForwardAuth = await ForwardAuth.isProtected(target, allowSelfSigned: allowSelfSigned)
+                }
             }
             isLoading = false
         }
@@ -641,13 +711,57 @@ struct ServiceLoginView: View {
         }
     }
 
+    /// Checks that the service's API really answers with the proxy credentials alone.
+    private func buildInstanceWithoutLogin(label: String, url: String, fallbackUrl: String?) async throws -> ServiceInstance {
+        do {
+            switch serviceType {
+            case .adguardHome:
+                let client = AdGuardHomeAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, username: "", password: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                try await client.authenticate(url: url, username: "", password: "", fallbackUrl: fallbackUrl)
+            case .qbittorrent:
+                let client = QbittorrentAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, sid: "", fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.getTransferInfo()
+            case .maltrail:
+                let client = MaltrailAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                _ = try await client.authenticate(url: url, username: nil, password: nil, fallbackUrl: fallbackUrl)
+            case .uptimeKuma:
+                let client = UptimeKumaAPIClient(instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, allowSelfSigned: allowSelfSigned)
+                try await client.authenticate(url: url, username: nil, password: nil, fallbackUrl: fallbackUrl)
+            case .gluetun, .flaresolverr:
+                let client = GenericAPIClient(serviceType: serviceType, instanceId: draftInstanceId)
+                await client.configure(url: url, fallbackUrl: fallbackUrl, apiKey: nil, allowSelfSigned: allowSelfSigned)
+                guard await client.ping() else { throw APIError.custom(localizer.t.loginErrorFailed) }
+            default:
+                throw APIError.custom(localizer.t.loginErrorCredentials)
+            }
+        } catch {
+            throw error.isLoginRefusal ? APIError.custom(localizer.t.forwardAuthNeedsLogin) : error
+        }
+        return ServiceInstance(
+            id: existingInstanceId ?? draftInstanceId,
+            type: serviceType,
+            label: label,
+            url: url,
+            token: "",
+            fallbackUrl: fallbackUrl,
+            allowSelfSigned: allowSelfSigned
+        )
+    }
+
     private func buildInstance(label: String, url: String, fallbackUrl: String?) async throws -> ServiceInstance {
         if let existing = existingInstance {
+            // Going back to the service's own login has to be tested like a new one.
+            let hadNoLogin = AccessProfileStore.shared.profile(for: existing.id)?.usesNativeLogin == false
             let metadataOnly = existing.url == url
                 && existing.username == normalizedOptional(username)
                 && existing.apiKey == normalizedOptional(apiKey)
                 && normalizedOptional(password).map { !$0.isEmpty } != true
                 && serviceType != .proxmox
+                && !hadNoLogin
 
             if metadataOnly {
                 return ServiceInstance(

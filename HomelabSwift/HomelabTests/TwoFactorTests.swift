@@ -155,8 +155,9 @@ final class TwoFactorClientTests: XCTestCase {
 }
 
 /// Minimal loopback HTTP server; one request per connection.
-private final class MockServer: @unchecked Sendable {
-    struct Request: Sendable { let route: String; let body: String }
+/// For a 302 the handler returns the target instead of a body.
+final class MockServer: @unchecked Sendable {
+    struct Request: Sendable { let route: String; let body: String; let cookie: String; let headers: [String] }
 
     private let listener: NWListener
     private let queue = DispatchQueue(label: "mock-server")
@@ -194,7 +195,8 @@ private final class MockServer: @unchecked Sendable {
             }
             self.lock.withLock { self.routes.append(request.route) }
             let (status, body) = self.handler(request)
-            let head = "HTTP/1.1 \(status) X\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n"
+            let location = status == 302 ? "Location: \(body)\r\n" : ""
+            let head = "HTTP/1.1 \(status) X\r\n\(location)Content-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n"
             connection.send(content: Data((head + body).utf8), completion: .contentProcessed { _ in connection.cancel() })
         }
     }
@@ -207,7 +209,8 @@ private final class MockServer: @unchecked Sendable {
         let length = lines.first { $0.lowercased().hasPrefix("content-length:") }
             .flatMap { Int($0.split(separator: ":")[1].trimmingCharacters(in: .whitespaces)) } ?? 0
         guard body.utf8.count >= length else { return nil }
+        let cookie = lines.first { $0.lowercased().hasPrefix("cookie:") } ?? ""
         let start = lines[0].split(separator: " ")
-        return Request(route: "\(start[0]) \(start[1].split(separator: "?")[0])", body: body)
+        return Request(route: "\(start[0]) \(start[1].split(separator: "?")[0])", body: body, cookie: cookie, headers: Array(lines.dropFirst()))
     }
 }
