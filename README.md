@@ -32,8 +32,8 @@ even when they sit behind a login proxy.
 ---
 
 > [!NOTE]
-> Version 2.0.0 is for iOS. The Android app has no download yet and, like the project
-> folders, still uses the Homelab name.
+> Only the iOS app has a download so far. Version 2.0.0 for Android can be built from source.
+> The project folders still use the Homelab name.
 
 ## Why
 
@@ -49,9 +49,9 @@ attention, and the few actions you actually want on the go.
 - **36 services in one app:** containers, storage, networking, media and
   monitoring. Add several instances of the same service and switch between them.
 - **Works behind forward auth:** sign in to your proxy in the app or send
-  custom headers, set per service. One sign-in can cover every service. ¹
+  custom headers, set per service. One sign-in can cover every service.
 - **Two-factor codes and OAuth:** one-time codes for services such as Nginx
-  Proxy Manager, Beszel and Dockge, and OAuth sign-in for Beszel. ¹
+  Proxy Manager, Beszel and Dockge, and OAuth sign-in for Beszel.
 - **Fallback addresses:** give a service a second URL, for example local and remote.
 - **Locked down:** PIN and biometric unlock, with service credentials kept in
   the iOS Keychain.
@@ -61,8 +61,6 @@ attention, and the few actions you actually want on the go.
   German, French, Italian and Spanish.
 - **Beyond services:** bookmarks, plus a shortcut to Tailscale when you need it.
 
-<sub>¹ iOS only for now.</sub>
-
 ## Services
 
 ### Infrastructure and monitoring
@@ -70,13 +68,13 @@ attention, and the few actions you actually want on the go.
 | | Service | What you get |
 |:-:|---|---|
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/portainer.png" width="22" alt=""> | **Portainer** | Containers, quick actions and resource usage |
-| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockge.png" width="22" alt=""> | **Dockge ¹** | Compose stacks and services, agents, start, stop, restart and update |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockge.png" width="22" alt=""> | **Dockge** | Compose stacks and services, agents, start, stop, restart and update |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockhand.png" width="22" alt=""> | **Dockhand** | Container management |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockmon.png" width="22" alt=""> | **DockMon** | Docker hosts and containers, logs, restart and update |
 | <img src="HomelabSwift/Homelab/Assets.xcassets/service-komodo.imageset/komodo.png" width="22" alt=""> | **Komodo** | Resources, deployments, stacks and servers |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/proxmox.png" width="22" alt=""> | **Proxmox VE** | Nodes, guests, storage, networking, backups and cluster operations |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/truenas-scale.png" width="22" alt=""> | **TrueNAS SCALE / CORE** | Pools, disks, shares, services and alerts |
-| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/scrutiny.png" width="22" alt=""> | **Scrutiny ¹** | Drive health, temperatures, S.M.A.R.T. attributes and archiving |
+| <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/scrutiny.png" width="22" alt=""> | **Scrutiny** | Drive health, temperatures, S.M.A.R.T. attributes and archiving |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/beszel.png" width="22" alt=""> | **Beszel** | Server monitoring across nodes |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/uptime-kuma.png" width="22" alt=""> | **Uptime Kuma** | Monitor status and incidents |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/healthchecks.png" width="22" alt=""> | **Healthchecks** | Checks and health status |
@@ -115,8 +113,6 @@ attention, and the few actions you actually want on the go.
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/qbittorrent.png" width="22" alt=""> | **qBittorrent** | Transfers, speeds and connection status |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/gluetun.png" width="22" alt=""> | **Gluetun** | VPN status, public IP and forwarded port |
 | <img src="https://cdn.jsdelivr.net/gh/selfhst/icons/png/flaresolverr.png" width="22" alt=""> | **FlareSolverr** | Sessions and status |
-
-<sub>¹ iOS only for now, so Android has 34 services.</sub>
 
 ## Install
 
