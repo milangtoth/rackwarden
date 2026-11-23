@@ -21,7 +21,17 @@
         "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/readme/servarr-dark.png",
         "https://raw.githubusercontent.com/milangtoth/Rackwarden/main/media-docs/readme/settings-dark.png"
       ],
-      "versions": [],
+      "versions": [
+        {
+          "version": "2.0.0",
+          "buildVersion": "40",
+          "date": "2026-11-23",
+          "localizedDescription": "The first release under the Rackwarden name. Android stays at 1.6.2 for now.\n\n### New\n\n- **Forward auth:** use services behind a login proxy such as Authentik. Sign in to\n  the proxy in the app or send custom headers, set per service. One sign-in can be\n  shared by all services, which is on by default and can be turned off in Settings.\n- **Two-factor codes:** Nginx Proxy Manager (authenticator), Beszel (emailed code)\n  and Dockge (authenticator) ask for a code when they need one.\n- **OAuth:** sign in to Beszel with its OAuth provider. Add `rackwarden://oauth` to\n  the provider's redirect URIs.\n- **Scrutiny:** drive health, temperatures and S.M.A.R.T. attributes, archiving and\n  test notifications.\n- **Dockge:** stacks and services, including agents, with start, stop, restart and\n  update. Built for Dockge 1.5.0.\n- **Sign in again from the card** when a session expires, on Home and Servarr.\n\n### Changed\n\n- New name, icon and welcome screen.\n- Home and Servarr share the same layout.\n- TrueNAS alerts are readable text with their date.\n- The Telegram and Reddit contacts are gone.\n\n### Fixed\n\n- TrueNAS dashboards could stay empty because the app signed in too often.\n- Expired one-time codes for Proxmox are no longer stored or sent again.\n- The GitHub and Tailscale logos are visible in dark mode.\n\n### Updating from 1.6.2\n\n- Saved services stay when you update an app with the same bundle ID. Otherwise,\n  move them with a backup.\n- Backups from 1.6.2 can be imported. Backups from 2.0.0 also open in 1.6.2, which\n  skips Scrutiny, Dockge and forward auth settings.\n- Backups keep custom proxy headers but never proxy sessions, so you sign in to the\n  proxy again after importing.\n",
+          "downloadURL": "https://github.com/milangtoth/rackwarden/releases/download/v2.0.0/Rackwarden-2.0.0.ipa",
+          "size": 18081519,
+          "minOSVersion": "26.0"
+        }
+      ],
       "appPermissions": {
         "entitlements": [],
         "privacy": {
@@ -31,5 +41,16 @@
       }
     }
   ],
-  "news": []
+  "news": [
+    {
+      "title": "v2.0.0 — The first release under the Rackwarden name. Android stays at 1.6.2 for now.",
+      "identifier": "release-2.0.0",
+      "caption": "The first release under the Rackwarden name. Android stays at 1.6.2 for now. - **Forward auth:** use services behind a login proxy such as Authentik. Sign in to the proxy in the app or send custom headers, set per service. One sign-in can be",
+      "date": "2026-11-23",
+      "tintColor": "#12D6B3",
+      "notify": true,
+      "url": "https://github.com/milangtoth/rackwarden/releases/tag/v2.0.0",
+      "appID": "com.milangtoth.rackwarden"
+    }
+  ]
 }
