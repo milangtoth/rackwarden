@@ -107,6 +107,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.core.net.toUri
 import com.homelab.app.R
+import com.homelab.app.data.repository.ServicesRepository
+import com.homelab.app.ui.forwardauth.ForwardAuthDialog
+import com.homelab.app.ui.forwardauth.ForwardAuthTarget
+import com.homelab.app.ui.home.ConnectInstanceCard
+import com.homelab.app.ui.home.HomeViewModel
+import com.homelab.app.ui.home.InstanceCard
+import com.homelab.app.ui.home.LauncherHeader
+import com.homelab.app.ui.home.TailscaleCard
 import com.homelab.app.data.repository.MediaArrAction
 import com.homelab.app.data.repository.MediaArrActionResult
 import com.homelab.app.data.repository.MediaArrDownloadItem
@@ -129,7 +137,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-private const val MEDIA_TAILSCALE_ICON_URL = "https://cdn.jsdelivr.net/gh/selfhst/icons/png/tailscale.png"
 private const val QBITTORRENT_REFRESH_INTERVAL_MS = 30_000L
 
 @Composable
@@ -147,6 +154,8 @@ fun MediaArrScreen(
     val tailscaleConnected by viewModel.isTailscaleConnected.collectAsStateWithLifecycle()
     val cardPreviewState by viewModel.cardPreviewState.collectAsStateWithLifecycle()
 
+    val signInNeeds by viewModel.signInNeeds.collectAsStateWithLifecycle()
+    var proxySignIn by remember { mutableStateOf<ForwardAuthTarget?>(null) }
     var showReorderDialog by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -185,53 +194,7 @@ fun MediaArrScreen(
             contentPadding = PaddingValues(bottom = 24.dp, top = 16.dp)
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.nav_media),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(999.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "$connectedMediaCount",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        IconButton(onClick = { showReorderDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Default.SwapVert,
-                                contentDescription = stringResource(R.string.home_reorder_services)
-                            )
-                        }
-                    }
-                }
+                LauncherHeader(stringResource(R.string.nav_media), connectedMediaCount) { showReorderDialog = true }
             }
 
             if (!tutorialDismissed) {
@@ -304,72 +267,7 @@ fun MediaArrScreen(
             }
 
             if (tailscaleConnected || hasUnreachable) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.42f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val intent = Intent(Intent.ACTION_VIEW, "tailscale://app".toUri())
-                                val fallback = Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=com.tailscale.ipn".toUri())
-                                try {
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {
-                                    context.startActivity(fallback)
-                                }
-                            }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainer,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    SubcomposeAsyncImage(
-                                        model = MEDIA_TAILSCALE_ICON_URL,
-                                        contentDescription = stringResource(R.string.tailscale_open),
-                                        modifier = Modifier.size(24.dp),
-                                        contentScale = ContentScale.Fit,
-                                        loading = {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(14.dp),
-                                                strokeWidth = 1.8.dp,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        },
-                                        error = {
-                                            Icon(
-                                                imageVector = if (tailscaleConnected) Icons.Default.CheckCircle else Icons.Default.Warning,
-                                                contentDescription = null,
-                                                tint = if (tailscaleConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (tailscaleConnected) stringResource(R.string.tailscale_connected) else stringResource(R.string.media_tailscale_needed_title),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = if (tailscaleConnected) stringResource(R.string.media_tailscale_connected_desc) else stringResource(R.string.media_tailscale_needed_desc),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
-                        }
-                    }
-                }
+                item(span = { GridItemSpan(maxLineSpan) }) { TailscaleCard(isConnected = tailscaleConnected) }
             }
 
             if (gridEntries.isEmpty()) {
@@ -407,39 +305,55 @@ fun MediaArrScreen(
 
             gridItems(gridEntries, key = { it.key }) { entry ->
                 when (entry) {
-                    is MediaGridEntry.Disconnected -> {
-                        MediaServiceGridCard(
-                            type = entry.type,
-                            label = mediaServiceDisplayName(entry.type),
-                            isConnected = false,
-
-                            instanceId = null,
-                            reachable = null,
-                            pinging = false,
-                            previewState = null,
-                            onRequestPreview = null,
-                            onRefresh = null,
-                            onClick = { onNavigateToLogin(entry.type, null) }
-                        )
-                    }
+                    is MediaGridEntry.Disconnected -> ConnectInstanceCard(
+                        type = entry.type,
+                        onClick = { onNavigateToLogin(entry.type, null) }
+                    )
                     is MediaGridEntry.Connected -> {
-                        MediaServiceGridCard(
+                        val instance = entry.instance
+                        val previewState = cardPreviewState[instance.id]
+                        val metrics = previewState?.preview?.metrics.orEmpty()
+                        val reachable = reachability[instance.id]
+                        LaunchedEffect(instance.id, reachable) {
+                            if (reachable == true) viewModel.requestCardPreview(instance.id)
+                        }
+                        InstanceCard(
                             type = entry.type,
-                            label = entry.instance.label,
-                            isConnected = true,
-
-                            instanceId = entry.instance.id,
-                            reachable = reachability[entry.instance.id],
-                            pinging = pinging[entry.instance.id] == true,
-                            previewState = cardPreviewState[entry.instance.id],
-                            onRequestPreview = { viewModel.requestCardPreview(entry.instance.id) },
-                            onRefresh = { viewModel.refreshInstance(entry.instance.id) },
-                            onClick = { onNavigateToService(entry.type, entry.instance.id) }
+                            instance = instance,
+                            isReachable = reachable,
+                            isPinging = pinging[instance.id] == true,
+                            summary = metrics.firstOrNull()?.takeIf { reachable == true }
+                                ?.let { HomeViewModel.InstanceSummary(it.value, null, it.label) },
+                            isSummaryLoading = previewState?.isLoading == true && metrics.isEmpty(),
+                            isRefreshing = false,
+                            onOpen = {
+                                when (val need = signInNeeds[instance.id]) {
+                                    is ServicesRepository.SignInNeed.Proxy -> proxySignIn = need.target
+                                    ServicesRepository.SignInNeed.Service -> onNavigateToLogin(entry.type, instance.id)
+                                    null -> onNavigateToService(entry.type, instance.id)
+                                }
+                            },
+                            onRefresh = { viewModel.refreshInstance(instance.id) },
+                            needsSignIn = instance.id in signInNeeds,
+                            detail = metrics.drop(1).joinToString(" • ") { "${it.label} ${it.value}" }
+                                .ifEmpty { previewState?.preview?.headline }
+                                ?.takeIf { reachable == true }
                         )
                     }
                 }
             }
         }
+    }
+
+    proxySignIn?.let { target ->
+        ForwardAuthDialog(
+            target = target,
+            onFinish = {
+                proxySignIn = null
+                viewModel.renewProxySession(target.instanceId, it)
+            },
+            onDismiss = { proxySignIn = null }
+        )
     }
 
     if (showReorderDialog) {
@@ -540,310 +454,6 @@ private fun MediaServiceOrderDialog(
             }
         }
     )
-}
-
-@Composable
-private fun MediaServiceGridCard(
-    type: ServiceType,
-    label: String,
-    isConnected: Boolean,
-
-    instanceId: String?,
-    reachable: Boolean?,
-    pinging: Boolean,
-    previewState: MediaArrCardPreviewUiState?,
-    onRequestPreview: (() -> Unit)?,
-    onRefresh: (() -> Unit)?,
-    onClick: () -> Unit
-) {
-    val cardColor = if (isConnected) type.primaryColor.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surfaceContainerLow
-    val cardBorder = BorderStroke(
-        1.dp,
-        type.primaryColor.copy(alpha = if (isConnected) 0.2f else 0.08f)
-    )
-    val brandColor = type.primaryColor
-    val cardBrush = remember(brandColor, isConnected) {
-        if (isConnected) {
-            Brush.linearGradient(
-                colors = listOf(
-                    brandColor.copy(alpha = 0.06f),
-                    Color.Transparent
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(580f, 520f)
-            )
-        } else {
-            null
-        }
-    }
-
-    LaunchedEffect(instanceId, reachable) {
-        if (instanceId != null && isConnected && reachable == true) {
-            onRequestPreview?.invoke()
-        }
-    }
-
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(18.dp),
-        color = cardColor,
-        border = cardBorder
-    ) {
-        Box {
-            if (cardBrush != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(cardBrush)
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .padding(14.dp)
-                    .heightIn(min = 140.dp, max = 200.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    ServiceIcon(type = type, size = 40.dp, iconSize = 24.dp, cornerRadius = 12.dp)
-
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        if (isConnected && reachable == false && onRefresh != null) {
-                            IconButton(onClick = onRefresh, modifier = Modifier.size(28.dp)) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = stringResource(R.string.refresh),
-                                    tint = type.primaryColor
-                                )
-                            }
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.ChevronRight,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                MediaCardStatusChip(
-                    isConnected = isConnected,
-                    pinging = pinging,
-                    reachable = reachable,
-                    accentColor = type.primaryColor
-                )
-
-                if (isConnected) {
-                    when {
-                        previewState?.isLoading == true && previewState.preview == null -> {
-                            LinearProgressIndicator(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(3.dp),
-                                color = type.primaryColor,
-                                trackColor = type.primaryColor.copy(alpha = 0.16f)
-                            )
-                        }
-
-                        previewState?.preview != null -> {
-                            previewState.preview?.let { preview ->
-                                preview.headline?.takeIf { it.isNotBlank() }?.let { headline ->
-                                    Text(
-                                        text = localizedHighlight(headline),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-
-                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    preview.metrics.take(2).forEach { metric ->
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = localizedMetricLabel(metric.label),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = localizedMetricValue(
-                                                    MediaArrMetric(
-                                                        label = metric.label,
-                                                        value = metric.value
-                                                    )
-                                                ),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-
-                                preview.metrics.getOrNull(2)?.let { extraMetric ->
-                                    MediaCardMetricPill(
-                                        label = localizedMetricLabel(extraMetric.label),
-                                        value = localizedMetricValue(
-                                            MediaArrMetric(
-                                                label = extraMetric.label,
-                                                value = extraMetric.value
-                                            )
-                                        ),
-                                        accent = type.primaryColor
-                                    )
-                                }
-                            }
-                        }
-
-                        previewState?.hasError == true && reachable == true -> {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.no_data),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                if (onRefresh != null) {
-                                    IconButton(
-                                        onClick = onRefresh,
-                                        modifier = Modifier.size(22.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Refresh,
-                                            contentDescription = stringResource(R.string.refresh),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f, fill = false))
-            }
-        }
-    }
-}
-
-@Composable
-private fun MediaCardStatusChip(
-    isConnected: Boolean,
-    pinging: Boolean,
-    reachable: Boolean?,
-    accentColor: Color
-) {
-    val statusText = when {
-        !isConnected -> stringResource(R.string.login_connect)
-        reachable == true -> stringResource(R.string.home_status_online)
-        pinging -> stringResource(R.string.home_verifying)
-        reachable == false -> stringResource(R.string.home_status_offline)
-        else -> stringResource(R.string.home_verifying)
-    }
-    val statusColor = when {
-        !isConnected -> MaterialTheme.colorScheme.onSurfaceVariant
-        reachable == true -> Color(0xFF4CAF50)
-        pinging -> MaterialTheme.colorScheme.tertiary
-        reachable == false -> Color(0xFFEF5350)
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = statusColor.copy(alpha = 0.14f)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            if (isConnected && pinging && reachable != true) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(8.dp),
-                    strokeWidth = 1.5.dp,
-                    color = statusColor
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(6.dp)
-                        .background(statusColor, shape = RoundedCornerShape(3.dp))
-                )
-            }
-            Text(
-                text = statusText,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = statusColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun MediaCardMetricPill(
-    label: String,
-    value: String,
-    accent: Color
-) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = accent.copy(alpha = 0.14f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.22f))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                color = accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = accent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
 }
 
 @Composable

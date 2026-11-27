@@ -34,7 +34,8 @@ data class BackupServiceEntry(
     val fallbackUrl: String? = null,
     val allowSelfSigned: Boolean,
     val password: String? = null,
-    val isPreferred: Boolean
+    val isPreferred: Boolean,
+    val accessProfile: AccessProfile? = null
 )
 
 // MARK: - ServiceType ↔ Backup String Mapping
@@ -78,6 +79,8 @@ object BackupServiceTypeMapper {
             ServiceType.TRUENAS -> "truenas"
             ServiceType.PTERODACTYL -> "pterodactyl"
             ServiceType.CALAGOPUS -> "calagopus"
+            ServiceType.SCRUTINY -> "scrutiny"
+            ServiceType.DOCKGE -> "dockge"
             ServiceType.UNKNOWN -> "unknown"
         }
     }
@@ -121,6 +124,8 @@ object BackupServiceTypeMapper {
             "truenas_core", "truenas-core", "truenascore" -> ServiceType.TRUENAS
             "pterodactyl" -> ServiceType.PTERODACTYL
             "calagopus" -> ServiceType.CALAGOPUS
+            "scrutiny" -> ServiceType.SCRUTINY
+            "dockge" -> ServiceType.DOCKGE
             else -> null
         }
     }
@@ -145,7 +150,7 @@ object BackupServiceTypeMapper {
 
 // MARK: - Conversion Helpers
 
-fun ServiceInstance.toBackupEntry(isPreferred: Boolean): BackupServiceEntry {
+fun ServiceInstance.toBackupEntry(isPreferred: Boolean, accessProfile: AccessProfile? = null): BackupServiceEntry {
     return BackupServiceEntry(
         type = BackupServiceTypeMapper.backupKey(type),
         label = label, // in iOS it was displayLabel, here label is equivalent
@@ -159,7 +164,8 @@ fun ServiceInstance.toBackupEntry(isPreferred: Boolean): BackupServiceEntry {
         fallbackUrl = fallbackUrl,
         allowSelfSigned = allowSelfSigned,
         password = password,
-        isPreferred = isPreferred
+        isPreferred = isPreferred,
+        accessProfile = accessProfile?.withoutCookies
     )
 }
 

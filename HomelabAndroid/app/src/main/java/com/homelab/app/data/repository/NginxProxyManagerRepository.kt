@@ -18,13 +18,81 @@ import com.homelab.app.data.remote.dto.nginxpm.NpmStream
 import com.homelab.app.data.remote.dto.nginxpm.NpmStreamRequest
 import com.homelab.app.data.remote.dto.nginxpm.NpmUser
 import com.homelab.app.data.remote.dto.nginxpm.NpmUserRequest
+import com.homelab.app.data.remote.access.SignInTracker
+import com.homelab.app.data.remote.dto.nginxpm.NpmTokenResult
+import com.homelab.app.domain.model.ServiceInstance
+import com.homelab.app.domain.model.TokenLifetime
+import com.homelab.app.domain.model.TwoFactorChallenge
+import com.homelab.app.domain.model.TwoFactorInvalidException
+import com.homelab.app.domain.model.TwoFactorRequiredException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class NginxProxyManagerRepository @Inject constructor(
-    private val api: NginxProxyManagerApi
+    private val api: NginxProxyManagerApi,
+    private val serviceInstancesRepository: ServiceInstancesRepository,
+    private val signInTracker: SignInTracker
 ) {
+    /** NPMplus returns the token as a cookie instead of in the body. */
+    private fun token(response: retrofit2.Response<NpmTokenResult>): String {
+        val token = response.body()?.resolvedToken.orEmpty().ifBlank {
+            response.headers().values("Set-Cookie")
+                .map { it.substringBefore(';').trim() }
+                .firstOrNull { it.startsWith("token=") }
+                ?.substringAfter("token=").orEmpty()
+        }
+        return token.ifBlank { throw Exception("Authentication failed. Empty token received.") }
+    }
+
+    suspend fun completeTwoFactor(challenge: TwoFactorChallenge, code: String, allowSelfSigned: Boolean): String {
+        val kind = challenge.kind as TwoFactorChallenge.Kind.Authenticator
+        val response = api.authenticate(
+            url = "${challenge.baseUrl}/api/tokens/2fa",
+            allowSelfSigned = allowSelfSigned.toString(),
+            credentials = mapOf("challenge_token" to kind.token, "code" to code)
+        )
+        if (response.code() in setOf(400, 401, 403)) throw TwoFactorInvalidException()
+        if (!response.isSuccessful) throw Exception("HTTP Error: ${response.code()}")
+        return token(response)
+    }
+
+    /** A new token after a rejection, or null when the user has to sign in. */
+    suspend fun renewSession(instance: ServiceInstance): String? {
+        if (signInTracker.isRejected(instance.id, instance.token)) return null
+        return try {
+            authenticate(
+                instance.url, instance.username.orEmpty(), instance.password.orEmpty(), instance.allowSelfSigned
+            ).also { store(instance, it) }
+        } catch (_: TwoFactorRequiredException) {
+            signInTracker.markRejected(instance.id, instance.token)
+            null
+        }
+    }
+
+    /** Extends a valid session before it runs out, so codes are not asked for needlessly. */
+    suspend fun renewIfAging(instance: ServiceInstance) {
+        if (!TokenLifetime.shouldRenew(instance.token, 86_400.0)) return
+        if (!signInTracker.mayTry("npm-renew-${instance.id}")) return
+        for (base in listOfNotNull(instance.url, instance.fallbackUrl).map { it.trimEnd('/') }) {
+            val response = runCatching {
+                api.renewToken(
+                    url = "$base/api/tokens", instanceId = instance.id,
+                    allowSelfSigned = instance.allowSelfSigned.toString(),
+                    authorization = "Bearer ${instance.token}", cookie = "token=${instance.token}"
+                )
+            }.getOrNull()?.takeIf { it.isSuccessful } ?: continue
+            runCatching { token(response) }.getOrNull()?.let { store(instance, it) }
+            return
+        }
+    }
+
+    /** Only replaces the token it was made from, so a newer sign-in is kept. */
+    private suspend fun store(from: ServiceInstance, token: String) {
+        val current = serviceInstancesRepository.getInstance(from.id) ?: return
+        if (current.token == from.token) serviceInstancesRepository.saveInstance(current.copy(token = token))
+    }
+
     suspend fun authenticate(url: String, email: String, password: String, allowSelfSigned: Boolean = false): String {
         val cleanUrl = url.trimEnd('/') + "/api/tokens"
         try {
@@ -42,24 +110,14 @@ class NginxProxyManagerRepository @Inject constructor(
             }
             
             val body = response.body() ?: throw Exception("Empty response body")
-            var token = body.resolvedToken
-            
-            // Per NPMplus: Se il token nel JSON è vuoto, cerca nei cookie.
-            if (token.isBlank()) {
-                val cookies = response.headers().values("Set-Cookie")
-                for (cookie in cookies) {
-                    if (cookie.contains("token=")) {
-                        // Estrae il valore tra "token=" e il prossimo ";"
-                        token = cookie.substringAfter("token=").substringBefore(";")
-                        break
-                    }
-                }
+            if (body.requiresTwoFactor) {
+                val challenge = body.challengeToken?.takeIf { it.isNotBlank() }
+                    ?: throw Exception("Authentication failed. Empty token received.")
+                throw TwoFactorRequiredException(
+                    TwoFactorChallenge(url.trimEnd('/'), TwoFactorChallenge.Kind.Authenticator(challenge))
+                )
             }
-
-            if (token.isBlank()) {
-                throw Exception("Authentication failed. Empty token received.")
-            }
-            return token
+            return token(response)
         } catch (e: Exception) {
             if (e is retrofit2.HttpException && (e.code() == 401 || e.code() == 403)) {
                 throw Exception("Authentication failed. Check your email and password.")

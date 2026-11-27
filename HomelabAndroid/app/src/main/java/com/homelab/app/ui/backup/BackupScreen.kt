@@ -690,6 +690,8 @@ private fun backupServiceDisplayName(type: ServiceType): String {
         ServiceType.TRUENAS -> stringResource(R.string.service_truenas)
         ServiceType.PTERODACTYL -> stringResource(R.string.service_pterodactyl)
         ServiceType.CALAGOPUS -> stringResource(R.string.service_calagopus)
+        ServiceType.SCRUTINY -> ServiceType.SCRUTINY.displayName
+        ServiceType.DOCKGE -> ServiceType.DOCKGE.displayName
         ServiceType.UNKNOWN -> type.displayName
     }
 }

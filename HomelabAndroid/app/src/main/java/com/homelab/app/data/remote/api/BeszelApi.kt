@@ -1,5 +1,6 @@
 package com.homelab.app.data.remote.api
 
+import com.homelab.app.data.remote.dto.beszel.BeszelAuthMethods
 import com.homelab.app.data.remote.dto.beszel.BeszelAuthResponse
 import com.homelab.app.data.remote.dto.beszel.BeszelRecordsResponse
 import com.homelab.app.data.remote.dto.beszel.BeszelSystem
@@ -22,6 +23,26 @@ interface BeszelApi {
         @Header("X-Homelab-Allow-Self-Signed") allowSelfSigned: String = "false",
         @Body credentials: Map<String, String>
     ): BeszelAuthResponse
+
+    /** Sign-in calls whose error replies matter. */
+    @POST
+    suspend fun postSignIn(
+        @Url url: String,
+        @Header("X-Homelab-Service") service: String = "Beszel",
+        @Header("X-Homelab-Bypass") bypass: String = "true",
+        @Header("X-Homelab-Allow-Self-Signed") allowSelfSigned: String = "false",
+        @Header("X-Homelab-Instance-Id") instanceId: String? = null,
+        @Header("Authorization") authorization: String? = null,
+        @Body body: Map<String, String> = emptyMap()
+    ): retrofit2.Response<ResponseBody>
+
+    @GET
+    suspend fun getAuthMethods(
+        @Url url: String,
+        @Header("X-Homelab-Service") service: String = "Beszel",
+        @Header("X-Homelab-Bypass") bypass: String = "true",
+        @Header("X-Homelab-Allow-Self-Signed") allowSelfSigned: String = "false"
+    ): BeszelAuthMethods
 
     @GET("api/collections/systems/records")
     suspend fun getSystems(

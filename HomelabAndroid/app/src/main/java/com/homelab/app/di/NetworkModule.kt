@@ -1,14 +1,25 @@
 package com.homelab.app.di
 
+import android.content.Context
 import com.homelab.app.BuildConfig
 import com.homelab.app.data.remote.AuthInterceptor
 import com.homelab.app.data.remote.DebugLoggingInterceptor
 import com.homelab.app.data.remote.HtmlDetectionInterceptor
+import com.homelab.app.data.remote.OkHttpWebSocketConnector
 import com.homelab.app.data.remote.SmartFallbackInterceptor
+import com.homelab.app.data.remote.TlsClientSelector
+import com.homelab.app.data.remote.WebSocketConnector
 import com.homelab.app.data.remote.TlsRoutingCallFactory
+import com.homelab.app.data.remote.access.AccessInterceptor
+import com.homelab.app.data.remote.access.AccessProfileStore
+import com.homelab.app.data.remote.access.InstanceTagInterceptor
+import com.homelab.app.data.remote.access.KeystoreProfileStorage
+import com.homelab.app.data.remote.access.ProxyGuardInterceptor
+import com.homelab.app.util.GlobalEventBus
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -38,16 +49,28 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideWebSocketConnector(clients: TlsClientSelector): WebSocketConnector = OkHttpWebSocketConnector(clients)
+
+    @Provides
+    @Singleton
+    fun provideAccessProfileStore(@ApplicationContext context: Context): AccessProfileStore =
+        AccessProfileStore(KeystoreProfileStorage(context))
+
+    @Provides
+    @Singleton
     fun provideOkHttpClient(
         smartFallbackInterceptor: SmartFallbackInterceptor,
         authInterceptor: AuthInterceptor,
         debugLoggingInterceptor: DebugLoggingInterceptor,
-        htmlDetectionInterceptor: HtmlDetectionInterceptor
+        htmlDetectionInterceptor: HtmlDetectionInterceptor,
+        accessProfileStore: AccessProfileStore,
+        globalEventBus: GlobalEventBus
     ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
+            .addInterceptor(InstanceTagInterceptor())
             .addInterceptor(smartFallbackInterceptor)
             .addInterceptor(authInterceptor)
 
@@ -56,6 +79,8 @@ object NetworkModule {
         }
 
         builder.addInterceptor(htmlDetectionInterceptor)
+        builder.addInterceptor(AccessInterceptor(accessProfileStore, globalEventBus, allowSelfSigned = false))
+        builder.addNetworkInterceptor(ProxyGuardInterceptor())
 
         return builder.build()
     }
@@ -67,7 +92,9 @@ object NetworkModule {
         smartFallbackInterceptor: SmartFallbackInterceptor,
         authInterceptor: AuthInterceptor,
         debugLoggingInterceptor: DebugLoggingInterceptor,
-        htmlDetectionInterceptor: HtmlDetectionInterceptor
+        htmlDetectionInterceptor: HtmlDetectionInterceptor,
+        accessProfileStore: AccessProfileStore,
+        globalEventBus: GlobalEventBus
     ): OkHttpClient {
         val trustAllCerts = arrayOf<TrustManager>(
             object : X509TrustManager {
@@ -86,6 +113,7 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
+            .addInterceptor(InstanceTagInterceptor())
             .addInterceptor(smartFallbackInterceptor)
             .addInterceptor(authInterceptor)
 
@@ -94,6 +122,8 @@ object NetworkModule {
         }
 
         builder.addInterceptor(htmlDetectionInterceptor)
+        builder.addInterceptor(AccessInterceptor(accessProfileStore, globalEventBus, allowSelfSigned = true))
+        builder.addNetworkInterceptor(ProxyGuardInterceptor())
 
         return builder
             .sslSocketFactory(sslSocketFactory, trustManager)

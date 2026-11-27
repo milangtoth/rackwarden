@@ -8,6 +8,7 @@ import com.homelab.app.data.repository.LocalPreferencesRepository
 import com.homelab.app.data.repository.ServicesRepository
 import com.homelab.app.data.repository.ThemeMode
 import com.homelab.app.domain.model.ServiceInstance
+import com.homelab.app.ui.forwardauth.ForwardAuthWebData
 import com.homelab.app.util.AppIconManager
 import com.homelab.app.util.AppIconOption
 import com.homelab.app.util.ServiceType
@@ -29,8 +30,35 @@ import org.json.JSONObject
 class SettingsViewModel @Inject constructor(
     private val servicesRepository: ServicesRepository,
     private val localPreferencesRepository: LocalPreferencesRepository,
-    private val appIconManager: AppIconManager
+    private val appIconManager: AppIconManager,
+    private val forwardAuthWebData: ForwardAuthWebData
 ) : ViewModel() {
+
+    val sharesForwardAuth: StateFlow<Boolean> = localPreferencesRepository.sharesForwardAuth
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    val canSeparateForwardAuth: Boolean by lazy { forwardAuthWebData.canSeparate }
+
+    private val _isSigningOutOfProxies = MutableStateFlow(false)
+    val isSigningOutOfProxies: StateFlow<Boolean> = _isSigningOutOfProxies
+
+    fun setSharesForwardAuth(shared: Boolean) {
+        viewModelScope.launch {
+            localPreferencesRepository.setSharesForwardAuth(shared)
+            servicesRepository.removeUnusedWebData()
+        }
+    }
+
+    fun signOutOfAllProxies() {
+        viewModelScope.launch {
+            _isSigningOutOfProxies.value = true
+            try {
+                servicesRepository.signOutOfAllProxies()
+            } finally {
+                _isSigningOutOfProxies.value = false
+            }
+        }
+    }
 
     data class UpdateBannerState(
         val latestVersion: String,

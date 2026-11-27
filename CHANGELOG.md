@@ -1,8 +1,9 @@
 # Changelog
 
-## 2.0.0 (iOS)
+## 2.0.0
 
-The first release under the Rackwarden name. Android stays at 1.6.2 for now.
+The first release under the Rackwarden name. Released for iOS; the Android version can
+be built from source but has no download yet.
 
 ### New
 

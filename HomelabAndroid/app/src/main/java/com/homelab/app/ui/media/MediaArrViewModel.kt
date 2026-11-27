@@ -6,6 +6,7 @@ import com.homelab.app.data.repository.MediaArrCardPreview
 import com.homelab.app.data.repository.MediaArrRepository
 import com.homelab.app.data.repository.LocalPreferencesRepository
 import com.homelab.app.data.repository.ServicesRepository
+import com.homelab.app.domain.model.OriginAccess
 import com.homelab.app.domain.model.ServiceInstance
 import com.homelab.app.util.ServiceType
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,6 +44,13 @@ class MediaArrViewModel @Inject constructor(
 
     val reachability: StateFlow<Map<String, Boolean?>> = servicesRepository.reachability
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    val signInNeeds: StateFlow<Map<String, ServicesRepository.SignInNeed>> = servicesRepository.signInNeeds
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    fun renewProxySession(instanceId: String, access: OriginAccess?) {
+        viewModelScope.launch { servicesRepository.renewProxySession(instanceId, access) }
+    }
 
     val pinging: StateFlow<Map<String, Boolean>> = servicesRepository.pinging
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())

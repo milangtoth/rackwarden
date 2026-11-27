@@ -272,6 +272,17 @@ class MediaArrRepository @Inject constructor(
         throw lastError ?: IllegalStateException("Authentication failed")
     }
 
+    /** Throws unless the API answers without a qBittorrent login. */
+    suspend fun checkQbittorrentWithoutLogin(url: String, allowSelfSigned: Boolean) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url("${cleanUrl(url)}/api/v2/app/version")
+            .addHeader("X-Homelab-Bypass", "true")
+            .build()
+        tlsClientSelector.forAllowSelfSigned(allowSelfSigned).newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IllegalStateException("${response.code}: ${response.message}")
+        }
+    }
+
     suspend fun authenticateQbittorrent(
         url: String,
         username: String,

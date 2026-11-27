@@ -3,9 +3,18 @@ package com.homelab.app.util
 import android.content.Context
 import com.homelab.app.R
 import com.homelab.app.data.remote.HtmlResponseException
+import com.homelab.app.data.remote.access.ForwardAuthInsecureException
+import com.homelab.app.data.remote.access.ForwardAuthRequiredException
+import com.homelab.app.data.remote.access.ForwardAuthUseHttpsException
 import com.homelab.app.data.repository.CraftyApiException
+import com.homelab.app.data.repository.DockgeException
+import com.homelab.app.data.repository.DockgeLoginRequiredException
 import com.homelab.app.data.repository.PatchmonApiException
 import com.homelab.app.data.repository.WakapiApiException
+import com.homelab.app.domain.model.OAuthException
+import com.homelab.app.domain.model.SignInRequiredException
+import com.homelab.app.domain.model.TwoFactorInvalidException
+import com.homelab.app.domain.model.TwoFactorRequiredException
 import kotlinx.serialization.SerializationException
 import retrofit2.HttpException
 import java.io.IOException
@@ -17,6 +26,20 @@ object ErrorHandler {
     fun getMessage(context: Context, error: Throwable?): String {
         Logger.e("ErrorHandler", "Handling error", error)
         return when (error) {
+            is ForwardAuthRequiredException -> context.getString(R.string.error_forward_auth_required)
+            is ForwardAuthInsecureException -> context.getString(R.string.error_forward_auth_insecure)
+            is ForwardAuthUseHttpsException -> context.getString(R.string.forward_auth_use_https)
+            is TwoFactorRequiredException -> context.getString(R.string.error_two_factor_required)
+            is TwoFactorInvalidException -> context.getString(R.string.error_two_factor_invalid)
+            is SignInRequiredException -> context.getString(R.string.error_sign_in_required)
+            is DockgeLoginRequiredException -> context.getString(R.string.error_invalid_credentials)
+            is DockgeException -> when {
+                error.messageRes == null -> error.detail ?: context.getString(R.string.error_unknown)
+                error.detail != null -> context.getString(error.messageRes, error.detail)
+                else -> context.getString(error.messageRes)
+            }
+            is OAuthException -> error.detail?.let { context.getString(error.messageRes, it) }
+                ?: context.getString(error.messageRes)
             is HtmlResponseException -> context.getString(R.string.error_html_response)
             is ConnectException, is UnknownHostException -> context.getString(R.string.error_server_unreachable) // We'll need to add string resources
             is SocketTimeoutException -> context.getString(R.string.error_timeout)

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Homelab</string>
+    <string name="app_name">Rackwarden</string>
     
     <!-- General -->
     <string name="loading">Cargando...</string>
@@ -123,7 +123,7 @@
     <string name="login_hint_wakapi">Utilice su clave API de Wakapi. Puede encontrarla o generarla en la página de configuración de Wakapi.</string>
     <string name="service_crafty_controller">Crafty Controller</string>
     <string name="service_crafty_controller_desc">Centro de control para servidores Minecraft</string>
-    <string name="login_hint_crafty_controller">Utilice su usuario y contraseña de Crafty Controller. Homelab se autentica con la API oficial Crafty v2 y guarda el token de sesión.</string>
+    <string name="login_hint_crafty_controller">Utilice su usuario y contraseña de Crafty Controller. Rackwarden se autentica con la API oficial Crafty v2 y guarda el token de sesión.</string>
     <string name="crafty_running_servers">servidores activos</string>
     <string name="crafty_servers">Servidores</string>
     <string name="crafty_total_players">Jugadores en línea</string>
@@ -271,7 +271,7 @@
     <string name="settings_update_action">Actualizar</string>
     <string name="settings_update_dismiss">Ocultar</string>
     <string name="update_popup_title">Actualización Disponible</string>
-    <string name="update_popup_body">Una nueva versión de Homelab está disponible. Actualiza ahora para las últimas mejoras.</string>
+    <string name="update_popup_body">Una nueva versión de Rackwarden está disponible. Actualiza ahora para las últimas mejoras.</string>
     <string name="settings_contact_repository">GitHub</string>
     <string name="settings_debug_label">Debug</string>
     <string name="settings_debug_logs_desc">Ver logs para resolver problemas de conexión y parsing.</string>
@@ -488,7 +488,7 @@
     <string name="security_disable_message">Se eliminarán tu PIN y los ajustes biométricos. Cualquiera podrá acceder a la app.</string>
     <string name="security_pin_mismatch">Los PIN no coinciden. Inténtalo de nuevo.</string>
     <string name="security_pin_saved">PIN guardado</string>
-    <string name="biometric_reason">Desbloquear Homelab</string>
+    <string name="biometric_reason">Desbloquear Rackwarden</string>
     <string name="security_new_pin">Nuevo PIN</string>
     <string name="security_new_pin_desc">Introduce tu nuevo PIN de 6 dígitos</string>
     <string name="security_current_pin">PIN actual</string>
@@ -531,7 +531,7 @@
     <string name="debug_logs_desc">Estos logs registran solicitudes, respuestas y errores de parsing.</string>
     <string name="debug_logs_empty">Aún no hay logs. Las acciones en la app aparecerán aquí.</string>
     <string name="debug_logs_copy">Copiar logs</string>
-    <string name="debug_logs_clip_label">Logs de depuración de Homelab</string>
+    <string name="debug_logs_clip_label">Logs de depuración de Rackwarden</string>
     <string name="debug_logs_copied">Logs copiados al portapapeles</string>
     <string name="debug_logs_search">Buscar en los registros…</string>
     <string name="debug_logs_no_results">Ningún registro coincide con los filtros</string>
@@ -667,7 +667,6 @@
     <string name="npm_provider">Proveedor</string>
     <string name="npm_access_list">Lista de acceso</string>
     <string name="npm_access_list_none">Sin lista de acceso</string>
-    <string name="login_npm_2fa_warning">La autenticación de dos factores de Nginx Proxy Manager no es compatible desde la app. Si el 2FA está activado en tu cuenta, el inicio de sesión desde la app puede fallar.</string>
     <string name="npm_save_success">Guardado correctamente</string>
     <string name="npm_delete_success">Eliminado correctamente</string>
     <string name="npm_renew_success">Certificado renovado correctamente</string>
@@ -676,8 +675,8 @@
     <string name="more">Más</string>
 
     <!-- Onboarding v2 -->
-    <string name="onboarding_welcome">Bienvenido</string>
-    <string name="onboarding_welcome_desc">Tu hogar digital, organizado e intuitivo.</string>
+    <string name="onboarding_welcome">Bienvenido a Rackwarden</string>
+    <string name="onboarding_welcome_desc">Tu homelab, protegido y organizado.</string>
     <string name="onboarding_welcome_button">Continuar</string>
     <string name="onboarding_ask_pin">¿Deseas configurar un código de bloqueo para proteger la aplicación?</string>
     <string name="onboarding_ask_pin_yes">Sí, configurar código</string>
@@ -987,8 +986,8 @@
     <string name="login_hint_plex">Usa la URL de tu servidor Plex y tu X-Plex-Token.</string>
 
     <!-- Security Biometric -->
-    <string name="security_biometric_reason">Autentícate para acceder a Homelab</string>
-    <string name="security_biometric_prompt_title">Desbloquear Homelab</string>
+    <string name="security_biometric_reason">Autentícate para acceder a Rackwarden</string>
+    <string name="security_biometric_prompt_title">Desbloquear Rackwarden</string>
     <string name="security_biometric_prompt_desc">Usa la biometría para acceder a la aplicación</string>
     <string name="security_biometric_prompt_enable">Activar Biometría</string>
 
@@ -1412,7 +1411,7 @@
     <string name="pangolin_priority">Prioridad %1$d</string>
     <string name="service_dockmon">DockMon</string>
     <string name="service_dockmon_desc">Monitorización de contenedores Docker con auto-reinicio, alertas, registros y actualizaciones de imagen</string>
-    <string name="login_hint_dockmon">Usa la URL base de DockMon y la API key. Homelab la envía como token Authorization Bearer.</string>
+    <string name="login_hint_dockmon">Usa la URL base de DockMon y la API key. Rackwarden la envía como token Authorization Bearer.</string>
     <string name="dockmon_instance_label">Instancia DockMon</string>
     <string name="dockmon_hosts">Hosts</string>
     <string name="dockmon_all_hosts">Todos los hosts</string>
@@ -1433,7 +1432,7 @@
     <string name="dockmon_logs">Registros</string>
     <string name="service_komodo">Komodo</string>
     <string name="service_komodo_desc">Gestión de flotas Docker y monitorización de despliegues</string>
-    <string name="login_hint_komodo">Usa la URL base de Komodo con una API key y un API secret. Homelab llama a los endpoints RPC /read de Komodo.</string>
+    <string name="login_hint_komodo">Usa la URL base de Komodo con una API key y un API secret. Rackwarden llama a los endpoints RPC /read de Komodo.</string>
     <string name="komodo_api_secret">API secret</string>
     <string name="komodo_login_error_api_secret_required">Introduce el API secret de Komodo</string>
     <string name="komodo_instance_label">Instancia Komodo</string>
@@ -1467,7 +1466,7 @@
     <string name="komodo_action_completed">Acción iniciada</string>
     <string name="service_maltrail">Maltrail</string>
     <string name="service_maltrail_desc">Detección de tráfico malicioso con feeds IOC</string>
-    <string name="login_hint_maltrail">Usa la URL base de Maltrail. Si el servidor tiene USERS activo, añade usuario y contraseña: Homelab inicia sesión mediante /login, guarda la cookie de sesión y luego lee /counts y /events?date=YYYY-MM-DD.</string>
+    <string name="login_hint_maltrail">Usa la URL base de Maltrail. Si el servidor tiene USERS activo, añade usuario y contraseña: Rackwarden inicia sesión mediante /login, guarda la cookie de sesión y luego lee /counts y /events?date=YYYY-MM-DD.</string>
     <string name="maltrail_instance_label">Instancia Maltrail</string>
     <string name="maltrail_findings">Hallazgos</string>
     <string name="maltrail_latest_day">Último día</string>
@@ -1540,4 +1539,113 @@
     <string name="truenas_pool_status">Estado del pool</string>
     <string name="truenas_no_pools">TrueNAS no devolvió pools.</string>
     <string name="truenas_no_disks">TrueNAS no devolvió discos.</string>
+
+    <!-- Forward auth, sign-in, Scrutiny and Dockge (2.0.0) -->
+    <string name="error_two_factor_required">Se requiere un código de dos factores.</string>
+    <string name="error_forward_auth_required">Inicia sesión en el proxy de este servicio para continuar.</string>
+    <string name="error_forward_auth_insecure">Las credenciales del proxy no se enviaron porque la conexión no es segura.</string>
+    <string name="two_factor_title">Código de dos factores</string>
+    <string name="two_factor_code">Código</string>
+    <string name="two_factor_app_message">Introduce el código de tu app de autenticación o un código de respaldo.</string>
+    <string name="two_factor_email_message">Introduce el código enviado a tu correo.</string>
+    <string name="two_factor_verify">Verificar</string>
+    <string name="two_factor_resend">Enviar un código nuevo</string>
+    <string name="status_needs_sign_in">Iniciar sesión</string>
+    <string name="error_two_factor_invalid">El código fue rechazado o ha caducado.</string>
+    <string name="oauth_sign_in">Iniciar sesión con OAuth</string>
+    <string name="oauth_hint">Tu proveedor debe permitir la URI de redirección %1$s</string>
+    <string name="oauth_choose_provider">Elige un proveedor de inicio de sesión</string>
+    <string name="oauth_unavailable">Este servidor no tiene ningún proveedor OAuth configurado.</string>
+    <string name="oauth_invalid_reply">La respuesta de inicio de sesión no era válida. Inténtalo de nuevo.</string>
+    <string name="oauth_denied">El proveedor rechazó el inicio de sesión.</string>
+    <string name="oauth_rejected">El servidor no aceptó el inicio de sesión: %1$s</string>
+    <string name="oauth_email_needed">Este servidor también pide un código por correo. Escribe tu correo arriba e inténtalo de nuevo.</string>
+    <string name="service_scrutiny_desc">Estado de los discos y supervisión S.M.A.R.T.</string>
+    <string name="login_hint_scrutiny">Scrutiny no tiene inicio de sesión propio. Escribe su dirección; si un proxy lo protege, activa forward auth.</string>
+    <string name="scrutiny_no_drives">No se encontraron discos.</string>
+    <string name="scrutiny_test_notification">Enviar notificación de prueba</string>
+    <string name="scrutiny_test_sent">Notificación de prueba enviada.</string>
+    <string name="scrutiny_healthy_drives">Discos sanos</string>
+    <string name="scrutiny_failed_drives">Discos con fallos</string>
+    <string name="scrutiny_hottest">Disco más caliente</string>
+    <string name="scrutiny_drives">Discos</string>
+    <string name="scrutiny_archived">Archivados</string>
+    <string name="scrutiny_model">Modelo</string>
+    <string name="scrutiny_serial">Número de serie</string>
+    <string name="scrutiny_firmware">Firmware</string>
+    <string name="scrutiny_capacity">Capacidad</string>
+    <string name="scrutiny_temperature">Temperatura</string>
+    <string name="scrutiny_powered_on">Tiempo encendido</string>
+    <string name="scrutiny_power_cycles">Ciclos de encendido</string>
+    <string name="scrutiny_last_report">Último informe</string>
+    <string name="scrutiny_week">Semana</string>
+    <string name="scrutiny_month">Mes</string>
+    <string name="scrutiny_year">Año</string>
+    <string name="scrutiny_attributes">Atributos</string>
+    <string name="scrutiny_all_passed">Todas las comprobaciones superadas</string>
+    <string name="scrutiny_passed">Correcto</string>
+    <string name="scrutiny_failed">Con fallos</string>
+    <string name="scrutiny_unknown">Aún sin datos</string>
+    <string name="scrutiny_critical">Crítico</string>
+    <string name="scrutiny_archive">Archivar disco</string>
+    <string name="scrutiny_unarchive">Restaurar disco</string>
+    <string name="scrutiny_archive_confirm">¿Archivar este disco? Se oculta de la lista y se puede restaurar en cualquier momento.</string>
+    <string name="scrutiny_action_failed">Scrutiny no pudo completar la acción.</string>
+    <string name="service_dockge_desc">Gestor de stacks de Docker Compose</string>
+    <string name="login_hint_dockge">Inicia sesión con tu cuenta de Dockge. Deja ambos campos vacíos si el inicio de sesión de Dockge está desactivado.</string>
+    <string name="dockge_running_stacks">Stacks en ejecución</string>
+    <string name="dockge_no_stacks">No se encontraron stacks.</string>
+    <string name="dockge_stacks">Stacks</string>
+    <string name="dockge_services">Servicios</string>
+    <string name="dockge_not_managed">No gestionado por Dockge</string>
+    <string name="dockge_start">Iniciar</string>
+    <string name="dockge_stop">Detener</string>
+    <string name="dockge_restart">Reiniciar</string>
+    <string name="dockge_update">Actualizar</string>
+    <string name="dockge_stop_confirm">¿Detener todos los servicios de %1$s?</string>
+    <string name="dockge_update_confirm">¿Actualizar %1$s? Se descargarán imágenes nuevas y los servicios podrían reiniciarse.</string>
+    <string name="dockge_working">Puede tardar unos minutos. Mantén la app abierta para ver el resultado.</string>
+    <string name="dockge_unconfirmed">La conexión terminó antes de que Dockge confirmara. La acción puede seguir en curso; actualiza para comprobarlo.</string>
+    <string name="dockge_agent_offline">%1$s está sin conexión</string>
+    <string name="dockge_needs_setup">Dockge aún no está configurado. Ábrelo primero en un navegador.</string>
+    <string name="dockge_status_running">En ejecución</string>
+    <string name="dockge_status_exited">Detenido</string>
+    <string name="dockge_status_inactive">Inactivo</string>
+    <string name="dockge_status_unknown">Desconocido</string>
+    <string name="error_sign_in_required">Inicia sesión de nuevo para continuar.</string>
+    <string name="forward_auth_title">¿Forward auth?</string>
+    <string name="forward_auth_desc">Inicia sesión en un proxy como Authentik antes del servicio.</string>
+    <string name="forward_auth_sign_in">Iniciar sesión en el proxy</string>
+    <string name="forward_auth_connected">Proxy conectado</string>
+    <string name="forward_auth_sign_in_again">Iniciar sesión de nuevo</string>
+    <string name="forward_auth_connect_first">Inicia sesión primero en el proxy.</string>
+    <string name="forward_auth_not_needed">El servicio respondió sin iniciar sesión en el proxy, así que forward auth se desactivó.</string>
+    <string name="forward_auth_blocked">El proxy no aceptó esta sesión.</string>
+    <string name="forward_auth_insecure">Enviar la sesión del proxy por una conexión no verificada. Otros en la red podrían robarla.</string>
+    <string name="forward_auth_use_https">Esta dirección redirige a https. Introduce la dirección https.</string>
+    <string name="forward_auth_method_browser">Acceso por navegador</string>
+    <string name="forward_auth_method_headers">Cabeceras</string>
+    <string name="forward_auth_header_name">Nombre de cabecera</string>
+    <string name="forward_auth_header_value">Valor</string>
+    <string name="forward_auth_add_header">Añadir cabecera</string>
+    <string name="forward_auth_header_invalid">La cabecera \"%1$s\" no se puede usar aquí. Puede estar incompleta, reservada o ser necesaria para el propio servicio.</string>
+    <string name="forward_auth_headers_blocked">El proxy no aceptó estas cabeceras.</string>
+    <string name="forward_auth_test_headers">Probar cabeceras</string>
+    <string name="forward_auth_fallback">Dirección alternativa (%1$s): conéctala por separado o úsala sin forward auth.</string>
+    <string name="forward_auth_fallback_not_needed">La dirección alternativa responde sin forward auth, no hace falta nada.</string>
+    <string name="forward_auth_sign_out">Cerrar sesión del proxy</string>
+    <string name="forward_auth_sign_out_message">Elimina de este dispositivo la sesión del proxy de este servicio. Puede seguir activa en el proxy hasta que caduque.</string>
+    <string name="forward_auth_turn_off">Desactivar</string>
+    <string name="forward_auth_turn_off_title">¿Desactivar forward auth?</string>
+    <string name="forward_auth_turn_off_message">La sesión del proxy y las cabeceras guardadas se eliminan al guardar.</string>
+    <string name="forward_auth_skip_login">Sin acceso separado</string>
+    <string name="forward_auth_skip_login_desc">Usar solo el proxy. El servicio debe confiar en él o no requerir acceso.</string>
+    <string name="forward_auth_needs_login">El servicio sigue pidiendo su propio acceso. Desactiva \"Sin acceso separado\" e introduce tus credenciales.</string>
+    <string name="forward_auth_offer">Esta dirección pide iniciar sesión en un proxy antes del servicio.</string>
+    <string name="forward_auth_offer_button">Activar forward auth</string>
+    <string name="forward_auth_settings_title">Forward auth</string>
+    <string name="forward_auth_share">Compartir el inicio de sesión entre servicios</string>
+    <string name="forward_auth_share_desc">Inicia sesión en el proxy una sola vez para todos los servicios. Desactívalo para usar una cuenta distinta en cada uno.</string>
+    <string name="forward_auth_sign_out_all">Cerrar sesión en todos los proxies</string>
+    <string name="forward_auth_sign_out_all_message">Elimina todos los inicios de sesión de proxy de este dispositivo; cada servicio volverá a pedirlo. Las sesiones pueden seguir activas en el proxy hasta que caduquen. Las cabeceras personalizadas se conservan.</string>
 </resources>

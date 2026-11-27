@@ -44,7 +44,7 @@ class AppIconManager @Inject constructor(
         var changed = false
 
         if (BuildConfig.DEBUG) {
-            val debugRunAlias = ComponentName(packageName, "$packageName.launcher.DebugLauncherAlias")
+            val debugRunAlias = ComponentName(packageName, "$CODE_PACKAGE.launcher.DebugLauncherAlias")
             if (packageManager.getComponentEnabledSetting(debugRunAlias) != PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
                 try {
                     packageManager.setComponentEnabledSetting(

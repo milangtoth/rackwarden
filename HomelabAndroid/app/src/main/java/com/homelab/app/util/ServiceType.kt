@@ -40,6 +40,8 @@ enum class ServiceType(val displayName: String) {
     TRUENAS("TrueNAS"),
     PTERODACTYL("Pterodactyl"),
     CALAGOPUS("Calagopus"),
+    SCRUTINY("Scrutiny"),
+    DOCKGE("Dockge"),
     UNKNOWN("Unknown");
 
     companion object {

@@ -64,6 +64,8 @@ val ServiceType.primaryColor: Color
         ServiceType.WAKAPI -> Color(0xFF2563EB)
         ServiceType.PTERODACTYL -> Color(0xFF5D87FF)
         ServiceType.CALAGOPUS -> Color(0xFF16A34A)
+        ServiceType.SCRUTINY -> Color(0xFF6366F1)
+        ServiceType.DOCKGE -> Color(0xFF1D9BD1)
         ServiceType.TRUENAS -> if (isThemeDark()) Color(0xFF0095D5) else Color(0xFF0078B0)
         ServiceType.UNKNOWN -> if (isThemeDark()) Color.LightGray else Color.Gray
     }
@@ -104,6 +106,8 @@ val ServiceType.backgroundColor: Color
         ServiceType.WAKAPI -> Color(0xFF2563EB).copy(alpha = 0.12f)
         ServiceType.PTERODACTYL -> Color(0xFF5D87FF).copy(alpha = 0.12f)
         ServiceType.CALAGOPUS -> Color(0xFF16A34A).copy(alpha = 0.12f)
+        ServiceType.SCRUTINY -> Color(0xFF6366F1).copy(alpha = 0.12f)
+        ServiceType.DOCKGE -> Color(0xFF1D9BD1).copy(alpha = 0.12f)
         ServiceType.TRUENAS -> (if (isThemeDark()) Color(0xFF0095D5) else Color(0xFF0078B0)).copy(alpha = 0.12f)
         ServiceType.UNKNOWN -> if (isThemeDark()) Color(0xFF334155) else Color(0xFFF1F5F9)
     }
@@ -143,6 +147,8 @@ val ServiceType.iconUrl: String
         ServiceType.WAKAPI -> "https://cdn.jsdelivr.net/gh/selfhst/icons/png/wakapi.png"
         ServiceType.PTERODACTYL -> "https://cdn.jsdelivr.net/gh/selfhst/icons/png/pterodactyl.png"
         ServiceType.CALAGOPUS -> "https://cdn.jsdelivr.net/gh/selfhst/icons/png/calagopus.png"
+        ServiceType.SCRUTINY -> "https://cdn.jsdelivr.net/gh/selfhst/icons/png/scrutiny.png"
+        ServiceType.DOCKGE -> "https://cdn.jsdelivr.net/gh/selfhst/icons/png/dockge.png"
         ServiceType.TRUENAS -> "https://cdn.jsdelivr.net/gh/selfhst/icons/png/truenas-scale.png"
         ServiceType.UNKNOWN -> ""
     }
@@ -247,5 +253,7 @@ val ServiceType.fallbackIcon: ImageVector
         ServiceType.TRUENAS -> Icons.Default.Storage
         ServiceType.PTERODACTYL -> Icons.Default.Dns
         ServiceType.CALAGOPUS -> Icons.Default.Dns
+        ServiceType.SCRUTINY -> Icons.Default.Storage
+        ServiceType.DOCKGE -> Icons.Default.Dns
         ServiceType.UNKNOWN -> Icons.Default.Widgets
     }

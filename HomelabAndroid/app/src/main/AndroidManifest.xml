@@ -21,7 +21,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher_default"
-        android:label="Homelab"
+        android:label="Rackwarden"
         android:roundIcon="@mipmap/ic_launcher_default"
         android:supportsRtl="true"
         android:theme="@style/Theme.Homelab"
@@ -35,6 +35,20 @@
             android:exported="true"
             android:theme="@style/Theme.Homelab.Starting"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.login.OAuthCallbackActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="rackwarden" android:host="oauth" />
+            </intent-filter>
+        </activity>
 
         <activity-alias
             android:name=".launcher.DebugLauncherAlias"

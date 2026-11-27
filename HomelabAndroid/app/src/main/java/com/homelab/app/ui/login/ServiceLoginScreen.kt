@@ -1,11 +1,25 @@
 package com.homelab.app.ui.login
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.homelab.app.data.remote.dto.beszel.OAuthCallback
+import com.homelab.app.ui.forwardauth.ForwardAuthSection
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -90,6 +104,15 @@ fun ServiceLoginScreen(
     val existingInstance by viewModel.existingInstance.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
+    val saved by viewModel.saved.collectAsStateWithLifecycle()
+    val twoFactorPrompt by viewModel.twoFactorPrompt.collectAsStateWithLifecycle()
+    val offersForwardAuth by viewModel.offersForwardAuth.collectAsStateWithLifecycle()
+    val oauthMethods by viewModel.oauthMethods.collectAsStateWithLifecycle()
+    val oauthPage by viewModel.oauthPage.collectAsStateWithLifecycle()
+    val choosesProvider by viewModel.choosesProvider.collectAsStateWithLifecycle()
+    val forwardAuth = viewModel.forwardAuth
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val density = LocalDensity.current
@@ -126,7 +149,6 @@ fun ServiceLoginScreen(
                 proxmoxRealm = "pam"
             }
             apiKey = instance.apiKey.orEmpty()
-            proxmoxOtp = instance.proxmoxOtp.orEmpty()
         } else {
             username = instance.username.orEmpty()
             apiKey = instance.apiKey.orEmpty()
@@ -137,11 +159,30 @@ fun ServiceLoginScreen(
         mfaCode = ""
     }
 
+    LaunchedEffect(saved) {
+        if (saved) onDismiss()
+    }
+
+    // Opens the sign-in page once, and gives up when the user comes back without a reply.
+    LaunchedEffect(oauthPage) {
+        val page = oauthPage ?: return@LaunchedEffect
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, page.toUri()))
+        } catch (_: ActivityNotFoundException) {
+            viewModel.cancelOAuth()
+            return@LaunchedEffect
+        }
+        withTimeoutOrNull(5_000) { lifecycleOwner.lifecycle.currentStateFlow.first { !it.isAtLeast(Lifecycle.State.RESUMED) } }
+        lifecycleOwner.lifecycle.currentStateFlow.first { it.isAtLeast(Lifecycle.State.RESUMED) }
+        delay(1_500)
+        viewModel.cancelOAuth()
+    }
+
+    twoFactorPrompt?.let { TwoFactorDialog(it) }
+
     LaunchedEffect(isLoading, error, existingInstance?.id) {
         if (hasSubmitted && !isLoading) {
-            if (error == null) {
-                onDismiss()
-            } else {
+            if (error != null) {
                 coroutineScope.launch {
                     shakeOffset.animateTo(12f, spring(stiffness = 800f, dampingRatio = 0.7f))
                     shakeOffset.animateTo(0f, spring(stiffness = 500f, dampingRatio = 0.8f))
@@ -242,6 +283,8 @@ fun ServiceLoginScreen(
                 ServiceType.TRUENAS -> stringResource(R.string.login_hint_truenas)
                 ServiceType.PTERODACTYL -> stringResource(R.string.login_hint_pterodactyl)
                 ServiceType.CALAGOPUS -> stringResource(R.string.login_hint_calagopus)
+                ServiceType.SCRUTINY -> stringResource(R.string.login_hint_scrutiny)
+                ServiceType.DOCKGE -> stringResource(R.string.login_hint_dockge)
                 else -> null
             }
 
@@ -269,35 +312,6 @@ fun ServiceLoginScreen(
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onTertiaryContainer
                         )
-                    }
-                }
-
-                if (serviceType == ServiceType.NGINX_PROXY_MANAGER) {
-                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                    ) {
-                        androidx.compose.foundation.layout.Row(
-                            modifier = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = stringResource(R.string.warning),
-                                tint = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = stringResource(R.string.login_npm_2fa_warning),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
                     }
                 }
             }
@@ -448,6 +462,34 @@ fun ServiceLoginScreen(
                 shape = RoundedCornerShape(14.dp)
             )
 
+            if (offersForwardAuth && !forwardAuth.isOn) {
+                Column(Modifier.fillMaxWidth().padding(bottom = 14.dp)) {
+                    Text(
+                        stringResource(R.string.forward_auth_offer),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                    OutlinedButton(onClick = {
+                        viewModel.clearError()
+                        allowSelfSigned = false
+                        forwardAuth.isOn = true
+                    }) { Text(stringResource(R.string.forward_auth_offer_button)) }
+                }
+            }
+
+            ForwardAuthSection(
+                form = forwardAuth,
+                serviceType = serviceType,
+                instanceId = viewModel.draftId,
+                url = viewModel.urlFor(url),
+                fallbackUrl = viewModel.urlFor(fallbackUrl),
+                allowSelfSigned = allowSelfSigned,
+                onAllowSelfSignedChange = { allowSelfSigned = it },
+                onTestHeaders = { viewModel.testHeaders(it, allowSelfSigned) },
+                onSignOut = { viewModel.signOutOfProxy() },
+                modifier = Modifier.padding(bottom = 14.dp)
+            )
+
             Surface(
                 color = if (allowSelfSigned) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primaryContainer,
                 shape = RoundedCornerShape(14.dp),
@@ -492,7 +534,9 @@ fun ServiceLoginScreen(
                 }
             }
 
-            if (
+            if (serviceType == ServiceType.SCRUTINY || viewModel.skipsNativeLogin(serviceType)) {
+                // Scrutiny has no login of its own, and the proxy can be the only sign-in.
+            } else if (
                 serviceType == ServiceType.PORTAINER ||
                 serviceType == ServiceType.HEALTHCHECKS ||
                 serviceType == ServiceType.PANGOLIN ||
@@ -672,7 +716,8 @@ fun ServiceLoginScreen(
                     )
                 }
 
-                SecretField(
+                val hidesPassword = serviceType == ServiceType.BESZEL && oauthMethods?.allowsPassword == false
+                if (!hidesPassword) SecretField(
                     value = password,
                     onValueChange = { password = it },
                     label = if (serviceType == ServiceType.PATCHMON) {
@@ -753,6 +798,42 @@ fun ServiceLoginScreen(
                     )
                 }
                 }
+            }
+
+            if (serviceType == ServiceType.BESZEL) {
+                OutlinedButton(
+                    onClick = {
+                        hasSubmitted = true
+                        keyboardController?.hide()
+                        viewModel.loadOAuthProviders(label, url, fallbackUrl, username, allowSelfSigned)
+                    },
+                    enabled = !isLoading && url.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(stringResource(R.string.oauth_sign_in)) }
+                Text(
+                    stringResource(R.string.oauth_hint, OAuthCallback.REDIRECT_URL),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (choosesProvider) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.cancelProviderChoice() },
+                    title = { Text(stringResource(R.string.oauth_choose_provider)) },
+                    text = {
+                        Column {
+                            oauthMethods?.providers.orEmpty().forEach { provider ->
+                                TextButton(onClick = {
+                                    viewModel.signInWithOAuth(provider, label, url, fallbackUrl, username, allowSelfSigned)
+                                }) { Text(provider.title) }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { viewModel.cancelProviderChoice() }) { Text(stringResource(R.string.cancel)) }
+                    }
+                )
             }
 
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))

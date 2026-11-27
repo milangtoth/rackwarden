@@ -2,7 +2,15 @@ package com.homelab.app.data.repository
 
 import com.homelab.app.data.remote.TlsClientSelector
 import com.homelab.app.domain.model.ServiceInstance
+import com.homelab.app.data.remote.access.AccessProfileStore
+import com.homelab.app.data.remote.access.SignInTracker
+import com.homelab.app.domain.model.AccessMethod
+import com.homelab.app.domain.model.AccessOrigin
+import com.homelab.app.domain.model.OriginAccess
+import com.homelab.app.ui.forwardauth.ForwardAuthTarget
+import com.homelab.app.ui.forwardauth.ForwardAuthWebData
 import com.homelab.app.util.GlobalEventBus
+import com.homelab.app.util.ProxyExpired
 import com.homelab.app.util.ServiceType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.firstOrNull
@@ -29,7 +38,10 @@ import javax.inject.Singleton
 class ServicesRepository @Inject constructor(
     private val serviceInstancesRepository: ServiceInstancesRepository,
     private val tlsClientSelector: TlsClientSelector,
-    private val globalEventBus: GlobalEventBus
+    private val globalEventBus: GlobalEventBus,
+    private val accessProfileStore: AccessProfileStore,
+    private val signInTracker: SignInTracker,
+    private val webData: ForwardAuthWebData
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var initialized = false
@@ -46,10 +58,92 @@ class ServicesRepository @Inject constructor(
     val pinging: Flow<Map<String, Boolean>> = _pinging
     val isTailscaleConnected: Flow<Boolean> = _isTailscaleConnected
 
+    private val _expiredProxies = MutableStateFlow<Map<String, AccessOrigin>>(emptyMap())
+
     val allInstances: Flow<List<ServiceInstance>> = serviceInstancesRepository.allInstances
     val instancesByType = serviceInstancesRepository.instancesByType
     val preferredInstanceIdByType = serviceInstancesRepository.preferredInstanceIdByType
     val preferredInstancesByType = serviceInstancesRepository.preferredInstancesByType
+
+    /** What the user has to do before an instance works again. */
+    sealed interface SignInNeed {
+        /** Sign in to the service itself, in its editor. */
+        data object Service : SignInNeed
+
+        /** Sign in to the proxy; the service's own login is kept. */
+        data class Proxy(val target: ForwardAuthTarget) : SignInNeed
+    }
+
+    val signInNeeds: Flow<Map<String, SignInNeed>> = combine(
+        allInstances, signInTracker.rejected, _expiredProxies, _reachability
+    ) { instances, rejected, expired, reachable ->
+        instances.mapNotNull { instance ->
+            val need = when {
+                rejected[instance.id] == instance.token && instance.token.isNotEmpty() -> SignInNeed.Service
+                // Still reachable another way, for example over its fallback address.
+                reachable[instance.id] == true -> null
+                else -> expired[instance.id]?.let { proxyNeed(instance, it) }
+            }
+            need?.let { instance.id to it }
+        }.toMap()
+    }
+
+    private fun proxyNeed(instance: ServiceInstance, origin: AccessOrigin): SignInNeed? {
+        val url = listOfNotNull(instance.url, instance.fallbackUrl).firstOrNull { AccessOrigin.from(it) == origin }
+            ?: return null
+        val profile = accessProfileStore.profile(instance.id)?.takeIf { it.isEnabled } ?: return null
+        // Headers are changed in the editor.
+        if (profile.method != AccessMethod.BROWSER) return SignInNeed.Service
+        return ForwardAuthTarget.create(instance.id, url, profile.allowsInsecureTransport, instance.allowSelfSigned)
+            ?.let { SignInNeed.Proxy(it) }
+    }
+
+    /** Ignores late failures of credentials the user has already replaced. */
+    private suspend fun markProxyExpired(event: ProxyExpired) {
+        if (_expiredProxies.value.containsKey(event.instanceId)) return
+        if (accessProfileStore.profile(event.instanceId)?.access(event.access.origin) != event.access) return
+        _expiredProxies.update { it + (event.instanceId to event.access.origin) }
+        updateReachabilityMap(event.instanceId, null)
+        checkReachability(event.instanceId, force = true)
+    }
+
+    /** Pass null when the proxy no longer asks for a sign-in. */
+    suspend fun renewProxySession(instanceId: String, access: OriginAccess?) {
+        access?.let { accessProfileStore.update(it, instanceId) }
+        clearExpired(instanceId)
+        checkReachability(instanceId, force = true)
+    }
+
+    suspend fun signOutOfProxy(instanceId: String) {
+        accessProfileStore.signOut(instanceId)
+        val instance = serviceInstancesRepository.getInstance(instanceId) ?: return
+        webData.remove(instanceId, listOf(instance.url, instance.fallbackUrl))
+        updateReachabilityMap(instanceId, null)
+        checkReachability(instanceId, force = true)
+    }
+
+    /** Forgets every proxy sign-in on this device. Custom headers stay. */
+    suspend fun signOutOfAllProxies() {
+        webData.removeAll()
+        val ids = accessProfileStore.all()
+            .filter { it.value.isEnabled && it.value.method == AccessMethod.BROWSER }.keys
+        ids.forEach { accessProfileStore.signOut(it); updateReachabilityMap(it, null) }
+        coroutineScope { ids.map { async { checkReachability(it, force = true) } }.awaitAll() }
+    }
+
+    /** Drops browser data the sharing setting no longer uses. Services stay signed in. */
+    suspend fun removeUnusedWebData() {
+        webData.removeOrphans(serviceInstancesRepository.getAllInstances().map { it.id }.toSet())
+    }
+
+    /** A cancelled setup or a service without forward auth keeps no browser session. */
+    fun removeWebDataUnlessUsed(instanceId: String, urls: List<String?>) {
+        scope.launch {
+            if (accessProfileStore.profile(instanceId)?.isEnabled != true) webData.remove(instanceId, urls)
+        }
+    }
+
+    private fun clearExpired(instanceId: String) = _expiredProxies.update { it - instanceId }
 
     suspend fun initialize() {
         serviceInstancesRepository.initialize()
@@ -61,16 +155,23 @@ class ServicesRepository @Inject constructor(
                 markInstanceUnauthorized(instanceId)
             }
         }
+        scope.launch { globalEventBus.proxyExpired.collect { markProxyExpired(it) } }
+        scope.launch { removeUnusedWebData() }
     }
 
     suspend fun getInstance(id: String): ServiceInstance? = serviceInstancesRepository.getInstance(id)
 
     suspend fun saveInstance(instance: ServiceInstance) {
         serviceInstancesRepository.saveInstance(instance)
+        clearExpired(instance.id)
     }
 
     suspend fun disconnectInstance(instanceId: String) {
+        val removed = serviceInstancesRepository.getInstance(instanceId)
         serviceInstancesRepository.deleteInstance(instanceId)
+        accessProfileStore.set(null, instanceId)
+        clearExpired(instanceId)
+        removed?.let { webData.remove(instanceId, listOf(it.url, it.fallbackUrl)) }
         updateReachabilityMap(instanceId, null, remove = true)
         updatePingingMap(instanceId, false, remove = true)
         lastReachabilityCheckMs.remove(instanceId)
@@ -137,6 +238,8 @@ class ServicesRepository @Inject constructor(
                     ServiceType.WAKAPI -> listOf("/api/health", "/api/summary", "")
                     ServiceType.PROXMOX -> listOf("/api2/json/version", "")
                     ServiceType.TRUENAS -> listOf("/api/current", "/ui", "")
+                    ServiceType.SCRUTINY -> listOf("/api/health")
+                    ServiceType.DOCKGE -> listOf("/socket.io/?EIO=4&transport=polling")
                     else -> listOf("")
                 }
 

@@ -102,6 +102,8 @@ private fun dashboardRoute(type: ServiceType, instanceId: String): String {
         ServiceType.TRUENAS -> "truenas/$instanceId/dashboard"
         ServiceType.PTERODACTYL -> "pterodactyl/$instanceId/dashboard"
         ServiceType.CALAGOPUS -> "calagopus/$instanceId/dashboard"
+        ServiceType.SCRUTINY -> "scrutiny/$instanceId/dashboard"
+        ServiceType.DOCKGE -> "dockge/$instanceId/dashboard"
         ServiceType.RADARR,
         ServiceType.SONARR,
         ServiceType.LIDARR,
@@ -1393,6 +1395,40 @@ fun AppNavigation() {
                         if (newInstanceId != instanceId) {
                             navController.navigate(dashboardRoute(ServiceType.CALAGOPUS, newInstanceId)) {
                                 popUpTo("calagopus/$instanceId/dashboard") { inclusive = true }
+                            }
+                        }
+                    }
+                )
+            }
+
+            composable(
+                route = "scrutiny/{instanceId}/dashboard",
+                arguments = listOf(androidx.navigation.navArgument("instanceId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val instanceId = backStackEntry.arguments?.getString("instanceId") ?: return@composable
+                com.homelab.app.ui.scrutiny.ScrutinyDashboardScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToInstance = { newInstanceId ->
+                        if (newInstanceId != instanceId) {
+                            navController.navigate(dashboardRoute(ServiceType.SCRUTINY, newInstanceId)) {
+                                popUpTo("scrutiny/$instanceId/dashboard") { inclusive = true }
+                            }
+                        }
+                    }
+                )
+            }
+
+            composable(
+                route = "dockge/{instanceId}/dashboard",
+                arguments = listOf(androidx.navigation.navArgument("instanceId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val instanceId = backStackEntry.arguments?.getString("instanceId") ?: return@composable
+                com.homelab.app.ui.dockge.DockgeDashboardScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToInstance = { newInstanceId ->
+                        if (newInstanceId != instanceId) {
+                            navController.navigate(dashboardRoute(ServiceType.DOCKGE, newInstanceId)) {
+                                popUpTo("dockge/$instanceId/dashboard") { inclusive = true }
                             }
                         }
                     }

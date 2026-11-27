@@ -101,4 +101,38 @@ class BackupModelsTest {
         assertEquals("legacy", BackupServiceTypeMapper.backupAuthMode(PiHoleAuthMode.LEGACY))
         assertNull(BackupServiceTypeMapper.backupAuthMode(null))
     }
+
+    @Test
+    fun `new services and proxy headers survive a backup without sessions`() {
+        val profile = AccessProfile(
+            isEnabled = true,
+            origins = listOf(
+                OriginAccess(
+                    AccessOrigin.from("https://dockge.example.test")!!,
+                    headers = listOf(AccessHeader("X-Proxy", "h")),
+                    cookies = listOf(AccessCookie("session", "cookie-value"))
+                )
+            )
+        )
+        for (type in listOf(com.homelab.app.util.ServiceType.SCRUTINY, com.homelab.app.util.ServiceType.DOCKGE)) {
+            val entry = ServiceInstance("i", type, "X", "https://dockge.example.test", token = "t").toBackupEntry(true, profile)
+            val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            val text = json.encodeToString(BackupServiceEntry.serializer(), entry)
+            org.junit.Assert.assertFalse(text.contains("cookie-value"))
+            val read = json.decodeFromString(BackupServiceEntry.serializer(), text)
+            org.junit.Assert.assertEquals(type, read.toServiceInstance()?.type)
+            org.junit.Assert.assertEquals("h", read.accessProfile?.origins?.single()?.headers?.single()?.value)
+        }
+    }
+
+    @Test
+    fun `a backup entry from 1_6_2 is still read`() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val read = json.decodeFromString(
+            BackupServiceEntry.serializer(),
+            """{"type":"beszel","label":"B","url":"https://b.example.test","token":"t","allowSelfSigned":true,"password":"p","isPreferred":true}"""
+        )
+        org.junit.Assert.assertNull(read.accessProfile)
+        org.junit.Assert.assertEquals("p", read.toServiceInstance()?.password)
+    }
 }

@@ -77,6 +77,16 @@ class LocalPreferencesRepository @Inject constructor(
     private val BACKUP_SELECTED_TYPES_KEY = stringPreferencesKey("backup_selected_service_types")
     private val BACKUP_REMEMBER_SELECTION_KEY = booleanPreferencesKey("backup_remember_selection")
 
+    private val SHARED_FORWARD_AUTH_KEY = booleanPreferencesKey("shared_forward_auth")
+
+    val sharesForwardAuth: Flow<Boolean> = dataStore.data
+        .catch { exception -> if (exception is IOException) emit(emptyPreferences()) else throw exception }
+        .map { it[SHARED_FORWARD_AUTH_KEY] ?: true }
+
+    suspend fun setSharesForwardAuth(shared: Boolean) {
+        dataStore.edit { it[SHARED_FORWARD_AUTH_KEY] = shared }
+    }
+
     val themeMode: Flow<ThemeMode> = dataStore.data
         .catch { exception ->
             if (exception is IOException) {

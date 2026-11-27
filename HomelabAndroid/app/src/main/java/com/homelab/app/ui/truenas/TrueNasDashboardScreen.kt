@@ -41,6 +41,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -55,6 +56,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.homelab.app.R
 import com.homelab.app.data.repository.TrueNasAlert
+import com.homelab.app.data.repository.TrueNasAlertText
+import androidx.compose.material3.HorizontalDivider
 import com.homelab.app.data.repository.TrueNasDashboardSnapshot
 import com.homelab.app.data.repository.TrueNasDisk
 import com.homelab.app.data.repository.TrueNasPool
@@ -457,7 +460,26 @@ private fun TrueNasAlertsSection(alerts: List<TrueNasAlert>) {
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(alert.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(alert.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        alert.timestamp?.let {
+                            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        val content = remember(alert.message) { TrueNasAlertText.from(alert.message) }
+                        if (content.text.isNotEmpty()) {
+                            Text(content.text, style = MaterialTheme.typography.bodyMedium)
+                        }
+                        content.readings.forEach { (label, value) ->
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                            Row(verticalAlignment = Alignment.Top) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
                     }
                 }
             }

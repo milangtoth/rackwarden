@@ -2,17 +2,23 @@ package com.homelab.app.data.repository
 
 import android.content.Context
 import com.homelab.app.R
-import com.homelab.app.data.remote.TlsClientSelector
 import com.homelab.app.util.ServiceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
-import java.util.concurrent.TimeUnit
+import com.homelab.app.data.remote.WebSocketChannel
+import com.homelab.app.data.remote.WebSocketConnector
+import com.homelab.app.data.remote.access.ForwardAuthInsecureException
+import com.homelab.app.data.remote.access.ForwardAuthRequiredException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.text.DateFormat
+import java.util.Date
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -25,15 +31,8 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import okio.ByteString
 
 data class TrueNasSystemInfo(
     val hostname: String?,
@@ -98,6 +97,62 @@ data class TrueNasWorkloadSummary(
     val runningVirtualMachines: Int
 )
 
+/** An alert's HTML as plain text, with numbered readings (as from a UPS) as label and value. */
+data class TrueNasAlertText(val text: String, val readings: List<Pair<String, String>>) {
+    companion object {
+        private val label = Regex("""\d+\) (.+)""")
+        private val value = Regex("""[\w.\-]+: (.+)""")
+
+        fun from(html: String): TrueNasAlertText {
+            val lines = plain(html).split('\n').map { it.trim() }
+            val body = mutableListOf<String>()
+            val readings = mutableListOf<Pair<String, String>>()
+            var index = 0
+            while (index < lines.size) {
+                // "1) Battery charge (percent)" followed by "battery.charge: 95"
+                val name = label.matchEntire(lines[index])?.groupValues?.get(1)
+                val reading = lines.getOrNull(index + 1)?.let { value.matchEntire(it)?.groupValues?.get(1) }
+                if (name != null && reading != null) {
+                    readings += reading(name, reading)
+                    index += 2
+                } else {
+                    body += lines[index++]
+                }
+            }
+            if (readings.isNotEmpty()) {
+                body.removeAll { it.startsWith("UPS Statistics:") || it == "Statistics recovered:" }
+            }
+            return TrueNasAlertText(body.joinToString("\n").replace(Regex("\n{3,}"), "\n\n").trim(), readings)
+        }
+
+        private fun reading(label: String, value: String): Pair<String, String> {
+            fun without(unit: String) = label.replace(" ($unit)", "").trim()
+            return when {
+                "(percent)" in label && value.toDoubleOrNull() != null -> without("percent") to "$value%"
+                "(seconds)" in label && value.toLongOrNull() != null ->
+                    without("seconds") to formatSeconds(value.toLong())
+                else -> label to value
+            }
+        }
+
+        private fun formatSeconds(total: Long): String = listOf(
+            total / 3600 to "h", total % 3600 / 60 to "min", total % 60 to "s"
+        ).filter { it.first > 0 }.take(2).joinToString(" ") { "${it.first} ${it.second}" }.ifEmpty { "0 s" }
+
+        private fun plain(html: String): String {
+            var text = html.replace("\r", "")
+                .replace(Regex("<br\\s*/?>|</(p|div|li|tr|h[1-6])>", RegexOption.IGNORE_CASE), "\n")
+                .replace(Regex("<li[^>]*>", RegexOption.IGNORE_CASE), "• ")
+                .replace(Regex("</?[a-zA-Z][^>]*>"), "")
+            // "&amp;" last, so that "&amp;lt;" stays "&lt;".
+            listOf(
+                "&nbsp;" to " ", "&lt;" to "<", "&gt;" to ">", "&quot;" to "\"", "&#39;" to "'", "&apos;" to "'", "&amp;" to "&"
+            ).forEach { (entity, character) -> text = text.replace(entity, character) }
+            return text
+        }
+    }
+}
+
 data class TrueNasDashboardSnapshot(
     val system: TrueNasSystemInfo,
     val pools: List<TrueNasPool>,
@@ -116,7 +171,7 @@ data class TrueNasDashboardSnapshot(
 @Singleton
 class TrueNasRepository @Inject constructor(
     private val serviceInstancesRepository: ServiceInstancesRepository,
-    private val tlsClientSelector: TlsClientSelector,
+    private val connector: WebSocketConnector,
     private val json: Json,
     @param:ApplicationContext private val context: Context
 ) {
@@ -130,22 +185,12 @@ class TrueNasRepository @Inject constructor(
         require(apiKey.trim().isNotBlank()) { context.getString(R.string.login_error_api_key_required) }
         val candidates = baseCandidates(url, fallbackUrl)
         require(candidates.isNotEmpty()) { context.getString(R.string.login_error_url_required) }
-        var lastError: Exception? = null
-        for (base in candidates) {
-            try {
-                requireSecureTransport(base)
-                requestMethod(
-                    baseUrl = base,
-                    apiKey = apiKey,
-                    allowSelfSigned = allowSelfSigned,
-                    method = "system.info"
-                )
-                return
-            } catch (error: Exception) {
-                lastError = error
-            }
+        val connection = connect(candidates, apiKey, allowSelfSigned)
+        try {
+            connection.call("system.info")
+        } finally {
+            connection.close()
         }
-        throw lastError ?: IllegalStateException(context.getString(R.string.truenas_auth_failed))
     }
 
     suspend fun getDashboard(instanceId: String): TrueNasDashboardSnapshot = coroutineScope {
@@ -156,52 +201,53 @@ class TrueNasRepository @Inject constructor(
         require(apiKey.isNotBlank()) { context.getString(R.string.login_error_api_key_required) }
         val bases = baseCandidates(instance.url, instance.fallbackUrl)
 
-        val system = parseSystemInfo(fetchFirst(bases, apiKey, instance.allowSelfSigned, "system.info"))
-        val pools = runCatching {
-            parsePools(
-                fetchFirst(
-                    bases,
-                    apiKey,
-                    instance.allowSelfSigned,
-                    "pool.query",
-                    listOf(
-                        JsonArray(emptyList()),
-                        buildJsonObject {
-                            put("extra", buildJsonObject { put("is_upgraded", JsonPrimitive(false)) })
-                        }
-                    )
-                )
-            )
-        }.getOrDefault(emptyList())
-        val diskParams = listOf(
-            JsonArray(emptyList()),
-            buildJsonObject {
-                put("extra", buildJsonObject { put("pools", JsonPrimitive(true)) })
+        // TrueNAS allows 20 logins a minute per address, so one login serves the whole dashboard.
+        var connection = connect(bases, apiKey, instance.allowSelfSigned)
+        val replies = mutableMapOf<String, JsonElement>()
+        val systemInfo: JsonElement
+        try {
+            systemInfo = connection.call("system.info")
+            var reconnects = 0
+            for ((method, params) in DASHBOARD_CALLS) {
+                try {
+                    replies[method] = connection.call(method, params)
+                } catch (_: CallFailure) {
+                    // The server refused this one; the connection stays usable.
+                } catch (error: CancellationException) {
+                    if (error !is TimeoutCancellationException) throw error
+                    if (reconnects++ >= 2) throw IOException(error)
+                    connection.close()
+                    connection = connect(bases, apiKey, instance.allowSelfSigned)
+                } catch (error: IOException) {
+                    // The connection itself failed. Skip only this method.
+                    if (reconnects++ >= 2) throw error
+                    connection.close()
+                    connection = connect(bases, apiKey, instance.allowSelfSigned)
+                }
             }
-        )
-        val disks = runCatching {
-            parseDisks(fetchFirst(bases, apiKey, instance.allowSelfSigned, "disk.query", diskParams))
-        }.getOrDefault(emptyList())
-        val alerts = runCatching {
-            parseAlerts(fetchFirst(bases, apiKey, instance.allowSelfSigned, "alert.list"))
-        }.getOrDefault(emptyList())
-        val services = runCatching {
-            parseServices(fetchFirst(bases, apiKey, instance.allowSelfSigned, "service.query"))
-        }.getOrDefault(emptyList())
-        val iscsiObject = fetchFirstOptional(bases, apiKey, instance.allowSelfSigned, "iscsi.target.query")
-            ?: fetchFirstOptional(bases, apiKey, instance.allowSelfSigned, "sharing.iscsi.target.query")
-        val appObject = fetchFirstOptional(bases, apiKey, instance.allowSelfSigned, "app.query")
-        val vmObject = fetchFirstOptional(bases, apiKey, instance.allowSelfSigned, "vm.query")
+        } finally {
+            connection.close()
+        }
+        val empty: JsonElement = JsonArray(emptyList())
+        fun reply(method: String): JsonElement = replies[method] ?: empty
+
+        val system = parseSystemInfo(systemInfo)
+        val pools = parsePools(reply("pool.query"))
+        val disks = parseDisks(reply("disk.query"))
+        val alerts = parseAlerts(reply("alert.list"))
+        val services = parseServices(reply("service.query"))
+        val apps = reply("app.query")
+        val machines = reply("vm.query")
         val shares = TrueNasShareSummary(
-            smb = runCatching { countItems(fetchFirst(bases, apiKey, instance.allowSelfSigned, "sharing.smb.query")) }.getOrDefault(0),
-            nfs = runCatching { countItems(fetchFirst(bases, apiKey, instance.allowSelfSigned, "sharing.nfs.query")) }.getOrDefault(0),
-            iscsi = iscsiObject?.let(::countItems) ?: 0
+            smb = countItems(reply("sharing.smb.query")),
+            nfs = countItems(reply("sharing.nfs.query")),
+            iscsi = countItems(reply("iscsi.target.query"))
         )
         val workloads = TrueNasWorkloadSummary(
-            apps = appObject?.let(::countItems) ?: 0,
-            runningApps = appObject?.let(::countRunningItems) ?: 0,
-            virtualMachines = vmObject?.let(::countItems) ?: 0,
-            runningVirtualMachines = vmObject?.let(::countRunningItems) ?: 0
+            apps = countItems(apps),
+            runningApps = countRunningItems(apps),
+            virtualMachines = countItems(machines),
+            runningVirtualMachines = countRunningItems(machines)
         )
 
         TrueNasDashboardSnapshot(
@@ -217,101 +263,50 @@ class TrueNasRepository @Inject constructor(
 
     suspend fun getSummary(instanceId: String): TrueNasDashboardSnapshot = getDashboard(instanceId)
 
-    private suspend fun fetchFirst(
-        bases: List<String>,
-        apiKey: String,
-        allowSelfSigned: Boolean,
-        method: String,
-        params: List<JsonElement> = emptyList()
-    ): JsonElement {
-        var lastError: Exception? = null
+    /** The server answered, but refused the call. */
+    private class CallFailure(message: String) : Exception(message)
+
+    private val workingAttempts = ConcurrentHashMap<String, WebSocketAttempt>()
+
+    private suspend fun connect(bases: List<String>, apiKey: String, allowSelfSigned: Boolean): Connection {
+        var firstError: Exception? = null
         for (base in bases) {
             try {
                 requireSecureTransport(base)
-                return requestMethod(base, apiKey, allowSelfSigned, method, params)
+                return connect(base, apiKey, allowSelfSigned)
+            } catch (error: CancellationException) {
+                throw error
             } catch (error: Exception) {
-                lastError = error
+                if (firstError == null) firstError = error
             }
         }
-        throw lastError ?: IllegalStateException(context.getString(R.string.truenas_request_failed))
+        throw firstError ?: IllegalStateException(context.getString(R.string.truenas_request_failed))
     }
 
-    private suspend fun fetchFirstOptional(
-        bases: List<String>,
-        apiKey: String,
-        allowSelfSigned: Boolean,
-        method: String,
-        params: List<JsonElement> = emptyList()
-    ): JsonElement? {
-        return runCatching { fetchFirst(bases, apiKey, allowSelfSigned, method, params) }.getOrNull()
-    }
-
-    private suspend fun requestMethod(
-        baseUrl: String,
-        apiKey: String,
-        allowSelfSigned: Boolean,
-        method: String,
-        params: List<JsonElement> = emptyList()
-    ): JsonElement = withContext(Dispatchers.IO) {
-        val client = tlsClientSelector.forAllowSelfSigned(allowSelfSigned)
-            .newBuilder()
-            .connectTimeout(8, TimeUnit.SECONDS)
-            .readTimeout(12, TimeUnit.SECONDS)
-            .writeTimeout(12, TimeUnit.SECONDS)
-            .callTimeout(16, TimeUnit.SECONDS)
-            .build()
-
-        val attempts = listOf(
-            WebSocketAttempt("/api/current", ProtocolMode.JSON_RPC),
-            WebSocketAttempt("/api/v25.04", ProtocolMode.JSON_RPC),
-            WebSocketAttempt("/websocket", ProtocolMode.DDP)
-        )
+    private suspend fun connect(base: String, apiKey: String, allowSelfSigned: Boolean): Connection {
+        val known = workingAttempts[base]
         var lastError: Exception? = null
-        for (attempt in attempts) {
+        for (attempt in listOfNotNull(known) + ATTEMPTS.filter { it != known }) {
+            val connection = Connection(connector.open(webSocketUrl(base, attempt.endpoint), allowSelfSigned), attempt.mode)
             try {
-                val url = webSocketUrl(baseUrl, attempt.endpoint)
-                return@withContext when (attempt.mode) {
-                    ProtocolMode.JSON_RPC -> requestJsonRpc(client, url, apiKey, method, params)
-                    ProtocolMode.DDP -> requestDdp(client, url, apiKey, method, params)
+                if (attempt.mode == ProtocolMode.DDP) connection.sendDdpConnect()
+                val accepted = connection.call("auth.login_with_api_key", listOf(JsonPrimitive(apiKey.trim())))
+                if ((accepted as? JsonPrimitive)?.booleanOrNull == false) {
+                    throw CallFailure(context.getString(R.string.truenas_invalid_api_key))
                 }
+                workingAttempts[base] = attempt
+                return connection
             } catch (error: Exception) {
-                lastError = error
+                connection.close()
+                when {
+                    error is CancellationException && error !is TimeoutCancellationException -> throw error
+                    // A real answer is final: more attempts only use up the login limit.
+                    error is CallFailure || error is ForwardAuthRequiredException || error is ForwardAuthInsecureException -> throw error
+                    else -> lastError = if (error is TimeoutCancellationException) SocketTimeoutException() else error
+                }
             }
         }
         throw lastError ?: IllegalStateException(context.getString(R.string.truenas_request_failed))
-    }
-
-    private suspend fun requestJsonRpc(
-        client: OkHttpClient,
-        url: String,
-        apiKey: String,
-        method: String,
-        params: List<JsonElement>
-    ): JsonElement {
-        val session = WebSocketSession(client, url, json)
-        return session.use { active ->
-            val auth = active.jsonRpcCall("auth.login_with_api_key", listOf(JsonPrimitive(apiKey.trim())))
-            val authAccepted = (auth as? JsonPrimitive)?.booleanOrNull
-            if (authAccepted == false) {
-                throw IllegalStateException(context.getString(R.string.truenas_invalid_api_key))
-            }
-            active.jsonRpcCall(method, params)
-        }
-    }
-
-    private suspend fun requestDdp(
-        client: OkHttpClient,
-        url: String,
-        apiKey: String,
-        method: String,
-        params: List<JsonElement>
-    ): JsonElement {
-        val session = WebSocketSession(client, url, json)
-        return session.use { active ->
-            active.sendDdpConnect()
-            active.ddpCall("auth.login_with_api_key", listOf(JsonPrimitive(apiKey.trim())))
-            active.ddpCall(method, params)
-        }
     }
 
     private fun parseSystemInfo(element: JsonElement): TrueNasSystemInfo {
@@ -369,16 +364,22 @@ class TrueNasRepository @Inject constructor(
 
     private fun parseAlerts(element: JsonElement): List<TrueNasAlert> {
         return element.objectArray().mapIndexed { index, obj ->
-            val text = obj.string("text", "message", "formatted", "klass")
+            val text = obj.string("formatted", "text", "message", "klass")
             TrueNasAlert(
                 id = obj.string("uuid", "id").ifBlank { "alert-$index" },
                 level = obj.string("level", "severity").ifBlank { "INFO" },
                 title = obj.string("klass", "title").ifBlank { obj.string("level", "severity").ifBlank { "Alert" } },
                 message = text.ifBlank { obj.toString() },
-                timestamp = obj.string("datetime", "timestamp", "created").ifBlank { null }
+                timestamp = alertDate(obj["datetime"]) ?: obj.string("datetime", "timestamp", "created").ifBlank { null }
             )
         }
     }
+
+    /** TrueNAS sends dates as {"$date": milliseconds}. */
+    private fun alertDate(raw: JsonElement?): String? =
+        ((raw as? JsonObject)?.get("\$date") as? JsonPrimitive)?.longOrNull?.let {
+            DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it))
+        }
 
     private fun parseServices(element: JsonElement): List<TrueNasServiceStatus> {
         return element.objectArray().mapIndexedNotNull { index, obj ->
@@ -528,120 +529,88 @@ class TrueNasRepository @Inject constructor(
         return (error as? JsonPrimitive)?.contentOrNull
     }
 
-    private suspend fun <T> WebSocketSession.use(block: suspend (WebSocketSession) -> T): T {
-        try {
-            open()
-            return block(this)
-        } finally {
-            close()
-        }
-    }
+    private inner class Connection(private val channel: WebSocketChannel, private val mode: ProtocolMode) {
+        fun close() = channel.close()
 
-    private inner class WebSocketSession(
-        private val client: OkHttpClient,
-        private val url: String,
-        private val json: Json
-    ) {
-        private val messages = Channel<JsonElement>(Channel.UNLIMITED)
-        private var webSocket: WebSocket? = null
-
-        fun open() {
-            val request = Request.Builder()
-                .url(url)
-                .header("Accept", "application/json")
-                .build()
-            webSocket = client.newWebSocket(
-                request,
-                object : WebSocketListener() {
-                    override fun onMessage(webSocket: WebSocket, text: String) {
-                        runCatching { json.parseToJsonElement(text) }
-                            .onSuccess { messages.trySend(it) }
-                    }
-
-                    override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                        onMessage(webSocket, bytes.utf8())
-                    }
-
-                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                        messages.close(t)
-                    }
-
-                    override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                        messages.close()
-                    }
-                }
-            )
-        }
-
-        suspend fun jsonRpcCall(method: String, params: List<JsonElement>): JsonElement {
+        suspend fun call(method: String, params: List<JsonElement> = emptyList()): JsonElement {
             val id = UUID.randomUUID().toString()
-            val payload = buildJsonObject {
-                put("jsonrpc", JsonPrimitive("2.0"))
-                put("id", JsonPrimitive(id))
-                put("method", JsonPrimitive(method))
-                put("params", JsonArray(params))
-            }.toString()
-            check(webSocket?.send(payload) == true) { context.getString(R.string.truenas_request_failed) }
-            return withTimeout(12_000L) {
-                while (true) {
-                    val obj = messages.receive() as? JsonObject ?: continue
-                    if (obj["id"]?.jsonPrimitive?.contentOrNull != id) continue
-                    protocolError(obj)?.let { throw IllegalStateException(it) }
-                    return@withTimeout obj["result"] ?: JsonNull
+            channel.send(
+                buildJsonObject {
+                    if (mode == ProtocolMode.DDP) put("msg", JsonPrimitive("method")) else put("jsonrpc", JsonPrimitive("2.0"))
+                    put("id", JsonPrimitive(id))
+                    put("method", JsonPrimitive(method))
+                    put("params", JsonArray(params))
+                }.toString()
+            )
+            return withTimeout(CALL_TIMEOUT_MS) {
+                var result: JsonElement? = null
+                while (result == null) {
+                    val obj = receive() ?: continue
+                    val message = (obj["msg"] as? JsonPrimitive)?.contentOrNull
+                    // An older server speaks DDP here and will never answer this call.
+                    if (mode == ProtocolMode.JSON_RPC && obj["jsonrpc"] == null && message in setOf("failed", "error")) {
+                        throw IOException(context.getString(R.string.truenas_request_failed))
+                    }
+                    if ((obj["id"] as? JsonPrimitive)?.contentOrNull != id) continue
+                    if (mode == ProtocolMode.DDP && message != "result") continue
+                    protocolError(obj)?.let { throw CallFailure(it) }
+                    result = obj["result"] ?: JsonNull
                 }
-                JsonNull
+                result
             }
         }
 
         suspend fun sendDdpConnect() {
-            val payload = buildJsonObject {
-                put("msg", JsonPrimitive("connect"))
-                put("version", JsonPrimitive("1"))
-                put("support", buildJsonArray { add(JsonPrimitive("1")) })
-            }.toString()
-            check(webSocket?.send(payload) == true) { context.getString(R.string.truenas_request_failed) }
-            withTimeout(12_000L) {
+            channel.send(
+                buildJsonObject {
+                    put("msg", JsonPrimitive("connect"))
+                    put("version", JsonPrimitive("1"))
+                    put("support", buildJsonArray { add(JsonPrimitive("1")) })
+                }.toString()
+            )
+            withTimeout(CALL_TIMEOUT_MS) {
                 while (true) {
-                    val obj = messages.receive() as? JsonObject ?: continue
-                    when (obj["msg"]?.jsonPrimitive?.contentOrNull) {
+                    when ((receive()?.get("msg") as? JsonPrimitive)?.contentOrNull) {
                         "connected" -> return@withTimeout
-                        "failed" -> throw IllegalStateException(context.getString(R.string.truenas_request_failed))
+                        "failed" -> throw IOException(context.getString(R.string.truenas_request_failed))
                     }
                 }
             }
         }
 
-        suspend fun ddpCall(method: String, params: List<JsonElement>): JsonElement {
-            val id = UUID.randomUUID().toString()
-            val payload = buildJsonObject {
-                put("msg", JsonPrimitive("method"))
-                put("id", JsonPrimitive(id))
-                put("method", JsonPrimitive(method))
-                put("params", JsonArray(params))
-            }.toString()
-            check(webSocket?.send(payload) == true) { context.getString(R.string.truenas_request_failed) }
-            return withTimeout(12_000L) {
-                while (true) {
-                    val obj = messages.receive() as? JsonObject ?: continue
-                    if (obj["id"]?.jsonPrimitive?.contentOrNull != id) continue
-                    if (obj["msg"]?.jsonPrimitive?.contentOrNull != "result") continue
-                    protocolError(obj)?.let { throw IllegalStateException(it) }
-                    return@withTimeout obj["result"] ?: JsonNull
-                }
-                JsonNull
-            }
-        }
-
-        fun close() {
-            webSocket?.close(1000, null)
-            messages.close()
-        }
+        private suspend fun receive(): JsonObject? =
+            channel.receive().let { text -> runCatching { json.parseToJsonElement(text) as? JsonObject }.getOrNull() }
     }
 
     private data class WebSocketAttempt(val endpoint: String, val mode: ProtocolMode)
     private enum class ProtocolMode { JSON_RPC, DDP }
 
     companion object {
+        private const val CALL_TIMEOUT_MS = 12_000L
+
+        private val ATTEMPTS = listOf(
+            WebSocketAttempt("/api/current", ProtocolMode.JSON_RPC),
+            WebSocketAttempt("/api/v25.04", ProtocolMode.JSON_RPC),
+            WebSocketAttempt("/websocket", ProtocolMode.DDP)
+        )
+
+        private fun extra(key: String, value: Boolean): List<JsonElement> = listOf(
+            JsonArray(emptyList()),
+            buildJsonObject { put("extra", buildJsonObject { put(key, JsonPrimitive(value)) }) }
+        )
+
+        private val DASHBOARD_CALLS: List<Pair<String, List<JsonElement>>> = listOf(
+            "pool.query" to extra("is_upgraded", false),
+            "disk.query" to extra("pools", true),
+            "alert.list" to emptyList(),
+            "service.query" to emptyList(),
+            "sharing.smb.query" to emptyList(),
+            "sharing.nfs.query" to emptyList(),
+            "iscsi.target.query" to emptyList(),
+            "app.query" to emptyList(),
+            "vm.query" to emptyList()
+        )
+
         fun usesSecureApiTransport(raw: String): Boolean {
             val trimmed = raw.trim()
             if (trimmed.isBlank()) return false
